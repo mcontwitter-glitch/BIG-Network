@@ -1,6 +1,6 @@
 # BIG Network
 
-**BIG Network** is the home of **$BIG** — the token economy powering Bigfoot404's game universe (Bigfoot Bros), built on a Solana-based local devnet prototype.
+**BIG Network** is the **official blockchain of Bigfoot404 LLC** — the company's own chain, its native token **$BIG**, and the network infrastructure for Bigfoot404's corporate treasury, digital assets, and business operations.
 
 > **Status:** Local devnet prototype. The chain runs on a self-hosted Solana validator. Going public (hosted validator + public RPC endpoint) is a future decision — this repo documents the network as it stands.
 
@@ -17,7 +17,7 @@
 | **Standard** | SPL Token (classic program — max wallet compatibility) |
 | **Network** | Solana devnet (local validator, RPC `127.0.0.1:8899`) |
 
-All genesis supply sits in the **treasury wallet**, which funds the faucet and future distribution.
+All genesis supply sits in the **treasury wallet** — the company vault — which funds the faucet and future distribution under Bigfoot404 LLC's direction.
 
 ## Repository Layout
 
@@ -51,10 +51,11 @@ See `docs/OPS-RUNBOOK.md` for the full operational guide, restart ritual, and tr
 - **Keypairs and secrets are never committed.** `.gitignore` blocks `*.key`, `keys.env`, and the validator/vote/faucet keypairs. Only public addresses live in `chain.json`.
 - The ledger database (`ledger/`) is runtime state — excluded from the repo.
 
-## Relationship to the Games
+## What BIG Network Is
 
-- **Bigfoot Bros** — the $BIG token IS the in-world coin economy: gold coins stamped BIG, Mario-style collectible arcs, tied into the BIG Network.
-- **AVALON: The Waking Gates** — deliberately crypto-free. No tokens, no wallets, no crypto anywhere in Avalon.
+**BIG Network is Bigfoot404 LLC's corporate blockchain.** $BIG is the company's native token — held, governed, and distributed by Bigfoot404 LLC as a business asset, not tied to any single product or game.
+
+Any product integration (games, apps, platforms) would be a separate corporate decision using $BIG as a medium — the network itself stands on its own as company infrastructure.
 
 ## Ownership
 
