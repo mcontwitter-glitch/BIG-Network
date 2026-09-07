@@ -58,4 +58,6 @@ See `docs/OPS-RUNBOOK.md` for the full operational guide, restart ritual, and tr
 
 ## Ownership
 
-BIG Network and $BIG are property of **Bigfoot404 LLC**. All development, automations, and IP associated with the network and its tooling are owned by Bigfoot404 LLC.
+**BIG Network and $BIG are property of Bigfoot404 LLC.** All development, automations, and IP associated with the network and its tooling are owned by Bigfoot404 LLC.
+
+This repository (under MC's GitHub account) is the **official and only home** of BIG Network. It is not part of, hosted in, or affiliated with any other account, organization, or game repository.
