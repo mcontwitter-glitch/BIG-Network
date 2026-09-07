@@ -1,0 +1,10 @@
+{
+  "network": "solana-devnet",
+  "rpc": "http://127.0.0.1:8899",
+  "treasury": "EDFVCNL97RUij6fMjpUGCtnY7A3k4ZKtsh6tJWqEnDCA",
+  "mint": "DmQD1wHq2mi2Q6cLzKLbosxGJaqp9QS9qobL5Ge8XaAz",
+  "decimals": 9,
+  "symbol": "BIG",
+  "name": "BIG Chain",
+  "supply": 404000000
+}
