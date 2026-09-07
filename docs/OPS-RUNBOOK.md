@@ -54,7 +54,7 @@ curl -s -X POST http://127.0.0.1:8899 -H 'Content-Type: application/json' \
 $BIG is currently a local prototype. A public BIG Network would require:
 1. A hosted, always-on validator (or a small cluster) with a public RPC endpoint
 2. A decision on network policy (who validates, is supply still fixed at 404M)
-3. Wallet onboarding docs for players
+3. Wallet onboarding docs for users/partners
 4. Legal/compliance review under Bigfoot404 LLC before anything public
 
 None of the above has been approved yet. This repo stays documentation + tooling until then.
