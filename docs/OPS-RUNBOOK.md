@@ -58,3 +58,10 @@ $BIG is currently a local prototype. A public BIG Network would require:
 4. Legal/compliance review under Bigfoot404 LLC before anything public
 
 None of the above has been approved yet. This repo stays documentation + tooling until then.
+
+
+## SPEED TEST (Sept 8 2026) — bench.js
+
+- Run: `node bench.js` against a live local validator (requires @solana/web3.js: `npm i @solana/web3.js`).
+- Results (sandbox devnet, agave 2.1.21): burst 30/30 confirmed (effective 4.9 TPS, submit rate 36+ TPS); sequential confirmed avg 3.9s (p50 3.3s) dominated by ~1s block time. Full data: bench-results.json, bench-report.txt, bench-chart.png.
+- IMPORTANT: latest agave release panics on gossip multi_bind in the sandbox — validator is PINNED to v2.1.21. Do not upgrade blindly.
