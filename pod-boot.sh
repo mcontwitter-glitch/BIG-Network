@@ -1,9 +1,9 @@
 #!/bin/bash
 # BIG Network validator pod boot — one-shot, idempotent (safe on pod restarts).
 # Expects env: STATE_URL (signed URL to bigchain-state.zip: ledger + treasury/mint keys)
+mkdir -p /workspace/bigchain
 exec >> /workspace/bigchain/boot.log 2>&1
 set -x
-mkdir -p /workspace/bigchain
 
 # 1) app code
 if [ ! -d /workspace/bigchain/app/.git ]; then
@@ -65,5 +65,5 @@ for i in $(seq 1 60); do
 done
 cd /workspace/bigchain/app && node bootstrap.js || echo "bootstrap retry needed (fundloop pattern)"
 echo BOOT_DONE
-# keep container alive: supervisor is our child; wait on it forever
-wait
+# keep container alive: exec replaces the shell with the supervisor loop
+exec /workspace/bigchain/big-supervisor.sh
