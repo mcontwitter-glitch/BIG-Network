@@ -1,7 +1,7 @@
 // BIG Chain Gateway — public face of the standalone ledger
 // /rpc (CORS proxy to validator) · /drip ($BIG faucet) · /stats (chain stats)
 const http = require('http');
-const { Connection, Keypair, PublicKey } = require('@solana/web3.js');
+const { Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 const splToken = require('@solana/spl-token');
 const fs = require('fs');
 
@@ -77,12 +77,18 @@ http.createServer(async (req, res) => {
         (accs.value||[]).forEach(a => held += Number(a.account.data.parsed.info.tokenAmount.uiAmount || 0));
         if (held >= DRIP) { res.writeHead(429); return res.end(JSON.stringify({ok:false, error:'You already hold ' + held + ' $BIG — one claim at a time, whale.'})); }
 
+        // manual ATA path — the spl-token getOrCreate wrapper throws TokenAccountNotFoundError on fresh accounts
+        try { await conn.requestAirdrop(dest, LAMPORTS_PER_SOL); } catch(e) {} // bonus: fund wallet so it can pay its own fees
         const treasuryATA = await splToken.getAssociatedTokenAddress(MINT, TREASURY.publicKey);
-        const destATA = await splToken.getOrCreateAssociatedTokenAccount(
-          conn, TREASURY, MINT, dest, false, undefined, undefined,
-          splToken.ASSOCIATED_TOKEN_PROGRAM_ID, splToken.TOKEN_PROGRAM_ID
-        );
-        const sig = await splToken.transfer(conn, TREASURY, treasuryATA, destATA.address, TREASURY.publicKey, BigInt(DRIP * 1e9), [], undefined, splToken.TOKEN_PROGRAM_ID);
+        const destATA = await splToken.getAssociatedTokenAddress(MINT, dest);
+        const destInfo = await conn.getAccountInfo(destATA);
+        if (!destInfo) {
+          const tx = new Transaction().add(
+            splToken.createAssociatedTokenAccountInstruction(TREASURY.publicKey, destATA, dest, MINT)
+          );
+          await sendAndConfirmTransaction(conn, tx, [TREASURY]);
+        }
+        const sig = await splToken.transfer(conn, TREASURY, treasuryATA, destATA, TREASURY.publicKey, BigInt(DRIP * 1e9), [], undefined, splToken.TOKEN_PROGRAM_ID);
         claims.set(address, Date.now());
         res.writeHead(200);
         res.end(JSON.stringify({ok:true, sig, amount:DRIP, token:'BIG', network:'BIG Chain standalone ledger'}));
