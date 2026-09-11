@@ -96,4 +96,4 @@ http.createServer(async (req, res) => {
   }
 
   res.writeHead(404); res.end(JSON.stringify({error:'BIG Chain gateway — use /rpc, /drip, /stats'}));
-}).listen(9090, '127.0.0.1', () => console.log('gateway on 9090'));
+}).listen(9090, '0.0.0.0', () => console.log('gateway on 9090'));
