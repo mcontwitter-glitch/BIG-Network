@@ -52,3 +52,11 @@ The balance has cleared. Execute the full deploy now:
   `/app/conversations/69f56989777455158d4472f4/big-network/docs/POD-SPEC.md`.
 - If a step fails unexpectedly, reply with a one-line error summary
   (mention pod id if created).
+
+
+## CRITICAL BOOT LAWS (added Sept 11 2026 after the duplicate + restart-loop incident)
+1. NEVER exit the pod's main process — the supervisor must keep it alive forever (exec supervisor at the end of pod-boot.sh). Exiting = Runpod restart loop = massive data re-download burn.
+2. ALWAYS check for existing pods/volumes named BIG-NETWORK-VALIDATOR-01 / bigchain-ledger BEFORE creating anything. Duplicate resources = double billing. Currently live: pod mhd61wpcbllf0p + volume 4rgvqd4s12 — if a rebuild is ever needed, DELETE first, then create ONE.
+3. Mount path MUST be /workspace/bigchain (pod-boot.sh writes there). Verify mounts at creation.
+4. The deploy gate workflow is ARCHIVED — deploy only by hand per this playbook, never re-create the 30-min auto-deploy.
+5. Genesis/ledger state lives on the volume — a pod rebuild must NOT regenerate the chain; STATE_URL is only consumed when genesis.bin is missing.
