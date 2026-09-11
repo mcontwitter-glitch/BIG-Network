@@ -65,3 +65,5 @@ for i in $(seq 1 60); do
 done
 cd /workspace/bigchain/app && node bootstrap.js || echo "bootstrap retry needed (fundloop pattern)"
 echo BOOT_DONE
+# keep container alive: supervisor is our child; wait on it forever
+wait
