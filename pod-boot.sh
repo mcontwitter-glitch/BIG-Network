@@ -36,7 +36,7 @@ if [ ! -x /usr/local/bin/solana-test-validator ]; then
       https://github.com/anza-xyz/agave/releases/download/v2.1.21/solana-release-x86_64-unknown-linux-gnu.tar.bz2
   fi
   tar -xjf /workspace/bigchain/solana-release.tar.bz2 -C /tmp || { echo "FATAL: agave extract failed"; exit 1; }
-  cp /tmp/solana-release-x86_64-unknown-linux-gnu/bin/solana-test-validator /usr/local/bin/ || { echo "FATAL: validator install failed"; exit 1; }
+  cp /tmp/solana-release*/bin/solana-test-validator /usr/local/bin/ || { echo "FATAL: validator install failed"; exit 1; }
 fi
 solana-test-validator --version
 
