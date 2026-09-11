@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIG Network — Agent Operations Grid</title>
+<style>
+  :root { --navy:#0a1628; --navy2:#122340; --gold:#d4a017; --gold2:#f0c040; --steel:#7ba7c9; --ink:#e8eef4; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:radial-gradient(1200px 600px at 50% -10%, #16324f 0%, var(--navy) 55%, #06101d 100%); color:var(--ink); font-family:'Segoe UI',system-ui,sans-serif; min-height:100vh; }
+  .wrap { max-width:1080px; margin:0 auto; padding:28px 18px 60px; }
+  header { text-align:center; padding:22px 0 4px; }
+  .logo { font-size:38px; font-weight:900; letter-spacing:2px; }
+  .logo span { color:var(--gold2); }
+  .tag { color:var(--steel); font-size:12px; margin-top:6px; letter-spacing:2px; text-transform:uppercase; }
+  .livedot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#7fdc7f; box-shadow:0 0 8px #7fdc7f; margin-right:6px; animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .badge { display:inline-block; background:#1c3a1c; color:#7fdc7f; border:1px solid #2f5c2f; font-size:11px; padding:3px 10px; border-radius:20px; margin-top:12px; letter-spacing:1px; }
+  h2 { font-size:13px; color:var(--gold2); letter-spacing:2px; text-transform:uppercase; margin:28px 0 12px; border-bottom:1px solid #1e3a5f; padding-bottom:8px; }
+  .roster { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+  .agent { background:linear-gradient(180deg,var(--navy2),#0d1d36); border:1px solid #1e3a5f; border-radius:12px; padding:16px; }
+  .agent .top { display:flex; align-items:center; justify-content:space-between; }
+  .agent .name { font-weight:800; font-size:15px; }
+  .agent .dot { width:10px; height:10px; border-radius:50%; }
+  .dot.on { background:#7fdc7f; box-shadow:0 0 8px #7fdc7f; }
+  .dot.act { background:var(--gold2); box-shadow:0 0 8px var(--gold2); }
+  .agent .role { color:var(--steel); font-size:12px; margin-top:4px; }
+  .agent .note { color:#9db8cf; font-size:11.5px; margin-top:8px; line-height:1.5; }
+  .agent .seen { color:#4a6a8a; font-size:10.5px; margin-top:8px; font-family:monospace; }
+  .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+  .metric { background:linear-gradient(180deg,var(--navy2),#0d1d36); border:1px solid #1e3a5f; border-radius:12px; padding:14px; text-align:center; }
+  .metric .val { font-size:26px; font-weight:900; color:var(--gold2); font-family:monospace; }
+  .metric .lbl { font-size:10.5px; color:var(--steel); letter-spacing:1px; text-transform:uppercase; margin-top:4px; }
+  .note-line { color:#4a6a8a; font-size:11px; margin-top:8px; }
+  .tasks { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+  button { background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#10192b; font-weight:800; border:none; border-radius:10px; padding:14px 12px; cursor:pointer; font-size:14px; letter-spacing:.5px; }
+  button:hover { filter:brightness(1.12); }
+  #taskmsg { text-align:center; margin-top:12px; font-size:13px; min-height:20px; color:#7fdc7f; }
+  .log { display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto; }
+  .ev { background:#081525; border:1px solid #142c4a; border-radius:10px; padding:12px 14px; display:flex; gap:12px; align-items:flex-start; }
+  .ev .kind { flex-shrink:0; font-size:10px; font-weight:800; letter-spacing:1px; padding:3px 8px; border-radius:6px; text-transform:uppercase; min-width:78px; text-align:center; }
+  .k-forge { background:#3a2a10; color:#f0b040; } .k-telegram { background:#10314a; color:#7bc9f0; }
+  .k-scrape { background:#1c3a1c; color:#7fdc7f; } .k-task { background:#3a1030; color:#f07bd0; }
+  .k-system { background:#2a2a3a; color:#b0b0d0; } .k-deal { background:#3a2a10; color:#ffd040; }
+  .ev .body { flex:1; } .ev .txt { font-size:13px; line-height:1.45; }
+  .ev .meta { font-size:10.5px; color:#4a6a8a; margin-top:3px; font-family:monospace; }
+  footer { text-align:center; margin-top:40px; color:#4a6a8a; font-size:11.5px; line-height:1.9; }
+  .fstamp { color:var(--steel); font-family:monospace; font-size:11px; text-align:center; margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">BIG <span>NETWORK</span></div>
+    <div class="tag">Bigfoot404 LLC · Agent Operations Grid</div>
+    <div class="badge"><span class="livedot"></span>LIVE · REAL AGENTS · REAL NUMBERS</div>
+  </header>
+
+  <h2>Agent Roster</h2>
+  <div class="roster" id="roster"></div>
+
+  <h2>Live Metrics — Real Data Stream</h2>
+  <div class="metrics" id="metrics"></div>
+  <div class="note-line">Pipeline value computed from raw FSBO estimates (includes scrape outliers — trimmed view coming). Snapshot refreshed every 30 min by automation.</div>
+
+  <h2>Task Console — Talk to the Grid</h2>
+  <div class="tasks">
+    <button onclick="assignTask()">📋 ASSIGN TASK</button>
+    <button onclick="collab()">🤝 COLLABORATE</button>
+    <button onclick="validate()">🔍 VALIDATE NETWORK</button>
+  </div>
+  <div id="taskmsg"></div>
+
+  <h2>Event Log — What the Grid Did Today</h2>
+  <div class="log" id="log"></div>
+  <div class="fstamp" id="fstamp"></div>
+
+  <footer>
+    Real infrastructure. Real numbers. No fake TPS.<br>
+    BIG Network · operated by BIGagent404, Second-in-Command, Bigfoot404 LLC
+  </footer>
+</div>
+
+<script>
+const OPS_URL = 'https://base44.app/api/apps/69f56986c51e35a876adf38d/functions/networkOps';
+let DATA = null;
+
+async function post(body) {
+  const r = await fetch(OPS_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  return r.json();
+}
+function ago(iso) {
+  if (!iso) return '—';
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return Math.floor(s) + 's ago';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return Math.floor(s/86400) + 'd ago';
+}
+function fmtMoney(n) {
+  if (!n) return '0';
+  if (n >= 1e9) return '$' + (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
+  return '$' + Math.round(n).toLocaleString();
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+async function refresh() {
+  try {
+    DATA = await post({});
+    if (!DATA.ok) return;
+    // roster
+    document.getElementById('roster').innerHTML = DATA.agents.map(a => `
+      <div class="agent">
+        <div class="top"><span class="name">${esc(a.name)}</span>
+        <span class="dot ${a.status==='online' ? 'on' : 'act'}"></span></div>
+        <div class="role">${esc(a.role)}</div>
+        <div class="note">${esc(a.notes)}</div>
+        <div class="seen">${esc(a.handle)} · ${a.status}${a.last_seen ? ' · ' + ago(a.last_seen) : ''}</div>
+      </div>`).join('');
+    // metrics
+    const m = DATA.metrics || {}, live = DATA.live || {};
+    const cells = [
+      [(m.leadsTotal ?? 0).toLocaleString(), 'Leads in pipeline'],
+      [(m.newThisWeek ?? 0).toLocaleString(), 'New this week'],
+      [fmtMoney(m.pipelineValue), 'Raw pipeline value'],
+      [(m.cashBuyers ?? 0).toLocaleString(), 'Cash buyers'],
+      [(m.underContract ?? 0).toLocaleString(), 'Deals under contract'],
+      [(live.chainDone ?? 0).toLocaleString(), 'Chain requests done'],
+      [(DATA.eventsToday ?? 0).toLocaleString(), 'Events last 24h'],
+      [(DATA.tgEvents ?? 0).toLocaleString(), 'TG sends last 24h']
+    ];
+    document.getElementById('metrics').innerHTML = cells.map(c =>
+      `<div class="metric"><div class="val">${c[0]}</div><div class="lbl">${c[1]}</div></div>`).join('');
+    // events
+    document.getElementById('log').innerHTML = DATA.events.map(e => `
+      <div class="ev">
+        <span class="kind k-${esc(e.kind)}">${esc(e.kind)}</span>
+        <div class="body">
+          <div class="txt">${esc(e.text)}</div>
+          <div class="meta">${esc(e.actor)} · ${ago(e.when)}</div>
+        </div>
+      </div>`).join('');
+    document.getElementById('fstamp').textContent =
+      `feed refreshed ${new Date().toLocaleTimeString()} · snapshot ${DATA.snapshot_time ? ago(DATA.snapshot_time) : 'pending'} — ${esc(DATA.snapshot_notes || '')}`;
+  } catch (e) { /* feed hiccup — retry on next cycle */ }
+}
+
+async function queueTask(task, promptText) {
+  const msg = document.getElementById('taskmsg');
+  let text = promptText || '';
+  if (promptText !== null) {
+    text = prompt(promptText);
+    if (!text) return;
+  }
+  msg.style.color = '#f0c040';
+  msg.textContent = 'queued → automation picks it up within 60s…';
+  try {
+    const r = await post({ action:'task', task, text, from:'dashboard' });
+    if (r.ok) { msg.style.color = '#7fdc7f'; msg.textContent = `✓ queued (${task}) — the grid is on it.`; setTimeout(refresh, 60000); }
+    else throw new Error(r.error);
+  } catch (e) { msg.style.color = '#ff7f7f'; msg.textContent = 'queue failed — ' + e.message; }
+}
+function assignTask() { queueTask('assignTask', 'Task for BIGagent404:'); }
+function collab() { queueTask('collaborate', 'Collab message:'); }
+function validate() { queueTask('validate', null); }
+
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>

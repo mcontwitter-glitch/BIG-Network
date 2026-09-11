@@ -62,3 +62,7 @@ Any product integration (games, apps, platforms) would be a separate corporate d
 **BIG Network and $BIG are property of Bigfoot404 LLC.** All development, automations, and IP associated with the network and its tooling are owned by Bigfoot404 LLC.
 
 This repository (under MC's GitHub account) is the **official and only home** of BIG Network. It is not part of, hosted in, or affiliated with any other account, organization, or game repository.
+
+## Agent Operations Grid
+
+The network dashboard lives at [agent-network.html](https://mcontwitter-glitch.github.io/BIG-Network/agent-network.html) — real agent roster, live event log, task console, and real pipeline numbers (no fake TPS).
