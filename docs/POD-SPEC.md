@@ -20,7 +20,8 @@ on account top-up. No new vendor account needed.
 ## Boot sequence (start command)
 1. Clone mcontwitter-glitch/BIG-Network -> /workspace/bigchain/app
 2. apt: nodejs 20 + build tools; npm i (@solana/web3.js, @solana/spl-token)
-3. Install agave/solana-test-validator binary (v2.x) to /usr/local/bin
+3. Install agave v2.1.21 (solana-release-x86_64-unknown-linux-gnu.tar.bz2, tarball cached on the volume) to /usr/local/bin
+   BOOT IS NOW ONE FILE: pod-boot.sh at repo root (idempotent; pod args = `bash -c "curl -fsSL https://raw.githubusercontent.com/mcontwitter-glitch/BIG-Network/main/pod-boot.sh | bash"`, env STATE_URL = signed URL to bigchain-state.zip: ledger/ + treasury.key/mint.key/keys.env/chain.json — never committed, delivered via pod env)
 4. Patch gateway.js bind 127.0.0.1 -> 0.0.0.0 (proxy requires it)
 5. solana-test-validator --ledger /workspace/bigchain/ledger --bind-address 0.0.0.0
    (--bind-address fix per OPS-RUNBOOK.md; agave-validator full-node does NOT work in containers)
