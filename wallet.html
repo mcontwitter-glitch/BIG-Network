@@ -3,116 +3,191 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BIG Network — Wallet</title>
+<title>BIG NETWORK // WALLET HUD</title>
 <style>
-  :root { --bg:#0b0e14; --panel:#131826; --line:#232b3d; --gold:#e8b23a; --text:#e8eaf0; --dim:#8b93a7; --ok:#3ecf8e; --bad:#ff5c5c; }
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+  :root { --cyan:#3ee9ff; --cyan-dim:#1c6e7d; --bg:#04070a; --panel:#050d12; --line:#0f3a44; --text:#c9f6ff; --dim:#4a7f8c; --ok:#5cffb0; --bad:#ff5c6a; --amber:#ffcf5c; }
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { background:var(--bg); color:var(--text); font-family:-apple-system,'Segoe UI',Roboto,sans-serif; padding:24px 16px 60px; }
-  .wrap { max-width:760px; margin:0 auto; }
-  h1 { font-size:26px; letter-spacing:.5px; }
-  h1 span { color:var(--gold); }
-  .sub { color:var(--dim); font-size:13px; margin:6px 0 22px; }
-  .stats { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:22px; }
-  .stat { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 14px; min-width:110px; }
-  .stat b { display:block; color:var(--gold); font-size:17px; }
-  .stat i { font-style:normal; color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:1px; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
-  .card h2 { font-size:14px; text-transform:uppercase; letter-spacing:1.5px; color:var(--gold); margin-bottom:12px; }
-  input { width:100%; background:#0d1220; border:1px solid var(--line); border-radius:8px; color:var(--text); padding:10px 12px; font-size:14px; font-family:ui-monospace,monospace; }
-  input:focus { outline:1px solid var(--gold); }
-  button { background:var(--gold); color:#141005; border:0; border-radius:8px; padding:10px 18px; font-weight:700; font-size:14px; cursor:pointer; margin-top:10px; }
-  button:disabled { opacity:.5; cursor:wait; }
-  button.ghost { background:transparent; color:var(--gold); border:1px solid var(--gold); }
-  .out { margin-top:12px; background:#0d1220; border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-family:ui-monospace,monospace; font-size:12.5px; white-space:pre-wrap; word-break:break-all; color:var(--dim); }
-  .out.ok { color:var(--ok); } .out.bad { color:var(--bad); }
-  .row { display:flex; gap:10px; flex-wrap:wrap; }
-  .row > div { flex:1; min-width:220px; }
-  .addr { color:var(--gold); cursor:pointer; text-decoration:underline dotted; }
-  .note { color:var(--dim); font-size:11.5px; margin-top:8px; line-height:1.5; }
-  #chainstatus { font-size:12px; padding:4px 10px; border-radius:20px; display:inline-block; margin-left:8px; }
-  .live { background:rgba(62,207,142,.15); color:var(--ok); } .down { background:rgba(255,92,92,.15); color:var(--bad); }
-  .wl { font-family:ui-monospace,monospace; font-size:12.5px; }
+  body {
+    background:
+      radial-gradient(circle at 50% 40%, rgba(20,80,95,.18) 0%, transparent 55%),
+      repeating-linear-gradient(0deg, rgba(62,233,255,0.025) 0px, rgba(62,233,255,0.025) 1px, transparent 1px, transparent 3px),
+      var(--bg);
+    color:var(--text); font-family:'Share Tech Mono', ui-monospace, monospace; min-height:100vh; padding:14px; overflow-x:hidden;
+  }
+  .grid-overlay { position:fixed; inset:0; pointer-events:none; opacity:.35;
+    background-image: linear-gradient(rgba(62,233,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(62,233,255,.05) 1px, transparent 1px);
+    background-size:34px 34px; }
+  .wrap { max-width:1180px; margin:0 auto; position:relative; }
+
+  header { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;
+    border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:16px; }
+  .titl { font-size:15px; letter-spacing:3px; text-transform:uppercase; color:var(--cyan); text-shadow:0 0 8px rgba(62,233,255,.5); }
+  .titl b { color:#fff; }
+  .live { font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; }
+  .live .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; background:var(--ok); box-shadow:0 0 6px var(--ok); animation:pulse 1.6s infinite; }
+  .live .dot.off { background:var(--bad); box-shadow:0 0 6px var(--bad); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  .panel {
+    background:linear-gradient(180deg, rgba(15,58,68,.12), rgba(5,13,18,.4));
+    border:1px solid var(--line); border-radius:2px; padding:14px; position:relative; margin-bottom:14px;
+  }
+  .panel::before, .panel::after { content:''; position:absolute; width:9px; height:9px; border:1px solid var(--cyan); opacity:.7; }
+  .panel::before { top:-1px; left:-1px; border-right:none; border-bottom:none; }
+  .panel::after { bottom:-1px; right:-1px; border-left:none; border-top:none; }
+  .panel h2 { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--cyan); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+  .panel h2::before { content:'//'; color:var(--cyan-dim); }
+  .panel h2 .cnt { margin-left:auto; color:var(--dim); font-size:10px; }
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:760px) { .grid2 { grid-template-columns:1fr; } }
+
+  .stat { display:flex; flex-direction:column; gap:2px; }
+  .stat .val { font-size:22px; color:#fff; font-weight:700; text-shadow:0 0 10px rgba(62,233,255,.4); }
+  .stat .lbl { font-size:10px; color:var(--dim); letter-spacing:1.5px; text-transform:uppercase; }
+  .statrow { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+
+  input {
+    width:100%; background:#020608; border:1px solid var(--line); color:var(--text);
+    padding:9px 10px; font-family:inherit; font-size:13px; border-radius:2px;
+  }
+  input::placeholder { color:var(--dim); }
+  input:focus { outline:none; border-color:var(--cyan); box-shadow:0 0 6px rgba(62,233,255,.3); }
+  .row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+  .row > div { flex:1; min-width:180px; }
+
+  button {
+    background:transparent; color:var(--cyan); border:1px solid var(--cyan);
+    padding:9px 16px; font-family:inherit; font-size:12px; letter-spacing:1.5px; text-transform:uppercase;
+    cursor:pointer; border-radius:2px; margin-top:6px;
+  }
+  button:hover { background:rgba(62,233,255,.1); box-shadow:0 0 10px rgba(62,233,255,.2); }
+  button:disabled { opacity:.4; cursor:wait; }
+  button.solid { background:var(--cyan); color:#00131a; font-weight:700; border-color:var(--cyan); }
+  button.solid:hover { background:#5df4ff; }
+
+  .out {
+    margin-top:10px; background:#020608; border:1px solid var(--line); border-radius:2px;
+    padding:10px 12px; font-size:12px; white-space:pre-wrap; word-break:break-all; color:var(--dim); max-height:200px; overflow-y:auto;
+  }
+  .out.ok { color:var(--ok); border-color:rgba(92,255,176,.3); }
+  .out.bad { color:var(--bad); border-color:rgba(255,92,106,.3); }
+  .addr { color:var(--cyan); cursor:pointer; text-decoration:underline dotted; display:block; padding:3px 0; }
+  .addr:hover { color:#fff; }
+  .note { color:var(--dim); font-size:10.5px; margin-top:8px; line-height:1.5; }
+
+  .ctrlbar {
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:space-between;
+    border-top:1px solid var(--line); padding-top:12px; margin-top:20px; font-size:11px; color:var(--dim);
+    letter-spacing:1px; text-transform:uppercase;
+  }
+  .ctrlbar .grp { display:flex; align-items:center; gap:8px; }
+  .badge-tag { border:1px solid var(--line); color:var(--dim); padding:3px 10px; border-radius:2px; font-size:10px; }
+  footer { text-align:center; margin-top:24px; color:var(--dim); font-size:10.5px; letter-spacing:1px; }
 </style>
 </head>
 <body>
+<div class="grid-overlay"></div>
 <div class="wrap">
-  <h1>BIG<span>WALLET</span> <em id="chainstatus" class="down">checking chain…</em></h1>
-  <div class="sub">BIG Network — custodial chain wallets. Keypairs live on the validator's ledger volume, never in your browser.</div>
 
-  <div class="stats" id="stats"></div>
+  <header>
+    <div class="titl">WALLET<b> NETWORK HUD</b> // BIG NETWORK</div>
+    <div class="live"><span class="dot off" id="livedot"></span><span id="livetxt">CONNECTING…</span></div>
+  </header>
 
-  <div class="card">
-    <h2>Create a wallet</h2>
-    <button id="btnCreate">Mint me a BIG wallet</button>
-    <div class="out" id="outCreate">Creates a keypair on the chain, a $BIG token account, and funds gas.</div>
+  <div class="panel">
+    <h2>Chain Status <span class="cnt" id="chaincnt">LIVE SIM</span></h2>
+    <div class="statrow" id="stats">
+      <div class="stat"><span class="val">—</span><span class="lbl">Slot</span></div>
+      <div class="stat"><span class="val">—</span><span class="lbl">$BIG Supply</span></div>
+      <div class="stat"><span class="val">—</span><span class="lbl">Latency</span></div>
+    </div>
   </div>
 
-  <div class="card">
-    <h2>Check balance</h2>
-    <input id="addrBal" placeholder="Paste a BIG address (or tap one from the roster below)">
-    <button id="btnBal" class="ghost">Check</button>
-    <div class="out" id="outBal"></div>
+  <div class="grid2">
+    <div class="panel">
+      <h2>Mint Wallet <span class="cnt">CREATE</span></h2>
+      <button class="solid" id="btnCreate">▸ MINT NEW BIG WALLET</button>
+      <div class="out" id="outCreate">Creates a keypair on the ledger volume, a $BIG token account, and funds gas. Key never leaves the pod.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Wallet Tracker <span class="cnt">BALANCE</span></h2>
+      <input id="addrBal" placeholder="0xADDR / paste or tap a wallet below">
+      <button id="btnBal">▸ QUERY BALANCE</button>
+      <div class="out" id="outBal">—</div>
+    </div>
   </div>
 
-  <div class="card">
-    <h2>Send $BIG</h2>
+  <div class="panel">
+    <h2>Task Engine <span class="cnt">SEND $BIG</span></h2>
     <div class="row">
-      <div><input id="fromSend" placeholder="From address (your wallet)"></div>
-      <div><input id="toSend" placeholder="To address"></div>
+      <div><input id="fromSend" placeholder="FROM address"></div>
+      <div><input id="toSend" placeholder="TO address"></div>
+      <div><input id="amtSend" placeholder="AMOUNT"></div>
     </div>
-    <div class="row" style="margin-top:10px">
-      <div><input id="amtSend" placeholder="Amount (e.g. 250)"></div>
-    </div>
-    <button id="btnSend">Send $BIG</button>
-    <div class="out" id="outSend"></div>
-    <div class="note">Sends are signed on-pod by the custodial service. Only send to addresses you trust.</div>
+    <button class="solid" id="btnSend">▸ EXECUTE TRANSFER</button>
+    <div class="out" id="outSend">—</div>
+    <div class="note">Signed on-pod by the custodial service · validated against ledger state before broadcast.</div>
   </div>
 
-  <div class="card">
-    <h2>Network wallets</h2>
-    <button id="btnList" class="ghost">Refresh roster</button>
-    <div class="out wl" id="outList"></div>
+  <div class="panel">
+    <h2>Network Wallets <span class="cnt" id="wcount">ROSTER</span></h2>
+    <button id="btnList">▸ REFRESH ROSTER</button>
+    <div class="out" id="outList">—</div>
   </div>
 
-  <div class="note">Built for Bigfoot404 LLC · BIG Network validator · chain-backed custodial wallet service v1</div>
+  <div class="ctrlbar">
+    <div class="grp">STATUS: <span id="ctrlstatus" style="color:var(--bad)">OFFLINE</span></div>
+    <div class="grp">NODE: BIG-NETWORK-01</div>
+    <div class="grp">ROLE: NETWORK ARCHITECT</div>
+    <div class="badge-tag">v1 · custodial</div>
+  </div>
+
+  <footer>BIGFOOT404 LLC · BIG NETWORK VALIDATOR · CHAIN-BACKED WALLET SERVICE</footer>
 </div>
+
 <script>
 const GW = "https://xj74ovrba0elqe-9090.proxy.runpod.net";
 const $ = id => document.getElementById(id);
 const setOut = (el, msg, cls) => { el.textContent = (typeof msg === 'string') ? msg : JSON.stringify(msg, null, 2); el.className = 'out ' + (cls || ''); };
 
 async function api(path, opts) {
+  const t0 = performance.now();
   const r = await fetch(GW + path, opts);
   const t = await r.text();
-  try { return JSON.parse(t); } catch { throw new Error(t.slice(0, 200)); }
+  const ms = Math.round(performance.now() - t0);
+  try { return { data: JSON.parse(t), ms }; } catch { throw new Error(t.slice(0, 200)); }
 }
 
 async function refreshStats() {
   try {
-    const s = await api('/stats');
-    $('chainstatus').textContent = 'chain live · slot ' + s.slot;
-    $('chainstatus').className = 'live';
-    $('stats').innerHTML =
-      `<div class="stat"><b>${Number(s.slot).toLocaleString()}</b><i>slot</i></div>` +
-      `<div class="stat"><b>${Number(s.supply).toLocaleString()}</b><i>$BIG supply</i></div>` +
-      `<div class="stat"><b>${(s.token || 'BIG')}</b><i>token</i></div>`;
+    const { data: s, ms } = await api('/stats');
+    $('livedot').className = 'dot'; $('livetxt').textContent = 'CHAIN LIVE';
+    $('ctrlstatus').textContent = 'ACTIVE'; $('ctrlstatus').style.color = 'var(--ok)';
+    const statrow = $('stats');
+    statrow.innerHTML =
+      `<div class="stat"><span class="val">${Number(s.slot||0).toLocaleString()}</span><span class="lbl">Slot</span></div>` +
+      `<div class="stat"><span class="val">${Number(s.supply||0).toLocaleString()}</span><span class="lbl">$BIG Supply</span></div>` +
+      `<div class="stat"><span class="val">${ms}ms</span><span class="lbl">Latency</span></div>`;
   } catch (e) {
-    $('chainstatus').textContent = 'chain offline';
-    $('chainstatus').className = 'down';
+    $('livedot').className = 'dot off'; $('livetxt').textContent = 'CHAIN OFFLINE';
+    $('ctrlstatus').textContent = 'OFFLINE'; $('ctrlstatus').style.color = 'var(--bad)';
   }
 }
-setInterval(refreshStats, 15000); refreshStats();
+setInterval(refreshStats, 12000); refreshStats();
 
 $('btnCreate').onclick = async () => {
-  $('btnCreate').disabled = true; setOut($('outCreate'), 'Creating on-chain…');
+  $('btnCreate').disabled = true; setOut($('outCreate'), '> executing wallet.create()…');
   try {
-    const w = await api('/wallet/create', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const { data: w } = await api('/wallet/create', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
     if (w.address) {
       localStorage.setItem('myBigWallet', w.address);
-      setOut($('outCreate'), 'WALLET CREATED\n\nAddress: ' + w.address + '\n\nSaved to this browser. Copy it somewhere safe — it is your BIG network identity.', 'ok');
-      $('addrBal').value = w.address; loadRoster();
+      setOut($('outCreate'), '> WALLET_CREATED\n> address: ' + w.address + '\n> saved to this browser — copy it somewhere safe.', 'ok');
+      $('addrBal').value = w.address; $('fromSend').value = w.address; loadRoster();
     } else setOut($('outCreate'), w, 'bad');
-  } catch (e) { setOut($('outCreate'), 'Failed: ' + e.message, 'bad'); }
+  } catch (e) { setOut($('outCreate'), '> ERROR: ' + e.message, 'bad'); }
   $('btnCreate').disabled = false;
 };
 
@@ -121,34 +196,34 @@ if (mine) { $('addrBal').value = mine; $('fromSend').value = mine; }
 
 $('btnBal').onclick = async () => {
   const a = $('addrBal').value.trim(); if (!a) return;
-  setOut($('outBal'), 'Checking…');
-  try { setOut($('outBal'), await api('/wallet/balance?address=' + encodeURIComponent(a)), ''); }
-  catch (e) { setOut($('outBal'), 'Failed: ' + e.message, 'bad'); }
+  setOut($('outBal'), '> querying ledger…');
+  try { const { data } = await api('/wallet/balance?address=' + encodeURIComponent(a)); setOut($('outBal'), data, ''); }
+  catch (e) { setOut($('outBal'), '> ERROR: ' + e.message, 'bad'); }
 };
 
 $('btnSend').onclick = async () => {
   const from = $('fromSend').value.trim(), to = $('toSend').value.trim(), amt = parseFloat($('amtSend').value);
-  if (!from || !to || !amt) { setOut($('outSend'), 'Fill from, to, and amount.', 'bad'); return; }
-  $('btnSend').disabled = true; setOut($('outSend'), 'Signing on-pod and sending…');
+  if (!from || !to || !amt) { setOut($('outSend'), '> fill from / to / amount', 'bad'); return; }
+  $('btnSend').disabled = true; setOut($('outSend'), '> signing on-pod, broadcasting…');
   try {
-    const r = await api('/wallet/send', { method:'POST', headers:{'Content-Type':'application/json'},
+    const { data: r } = await api('/wallet/send', { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ from, to, amount: amt }) });
     setOut($('outSend'), r, (r.signature || r.ok) ? 'ok' : 'bad');
-  } catch (e) { setOut($('outSend'), 'Failed: ' + e.message, 'bad'); }
+  } catch (e) { setOut($('outSend'), '> ERROR: ' + e.message, 'bad'); }
   $('btnSend').disabled = false;
 };
 
 async function loadRoster() {
   try {
-    const l = await api('/wallet/list');
+    const { data: l } = await api('/wallet/list');
     const addrs = l.wallets || l.addresses || l;
-    if (!Array.isArray(addrs) || !addrs.length) { setOut($('outList'), 'No wallets yet — create the first one above.'); return; }
-    setOut($('outList'), addrs.map(a => (typeof a === 'string' ? a : a.address)).join('\n'));
+    if (!Array.isArray(addrs) || !addrs.length) { setOut($('outList'), '> no wallets yet — mint the first one above.'); $('wcount').textContent = '0 WALLETS'; return; }
+    $('wcount').textContent = addrs.length + ' WALLET' + (addrs.length===1?'':'S');
     $('outList').innerHTML = addrs.map(a => {
       const s = typeof a === 'string' ? a : a.address;
-      return `<span class="addr" onclick="document.getElementById('addrBal').value='${s}';document.getElementById('toSend').value='${s}'">${s}</span>`;
-    }).join('<br>');
-  } catch (e) { setOut($('outList'), 'Roster unavailable: ' + e.message, 'bad'); }
+      return `<span class="addr" onclick="document.getElementById('addrBal').value='${s}';document.getElementById('toSend').value='${s}'">▸ ${s}</span>`;
+    }).join('');
+  } catch (e) { setOut($('outList'), '> roster unavailable: ' + e.message, 'bad'); }
 }
 $('btnList').onclick = loadRoster; loadRoster();
 </script>
