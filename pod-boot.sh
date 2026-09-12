@@ -5,10 +5,14 @@ mkdir -p /workspace/bigchain
 exec >> /workspace/bigchain/boot.log 2>&1
 set -x
 
-# 1) app code
+# 1) app code (fresh clone OR pull latest main so restarts pick up new code)
 if [ ! -d /workspace/bigchain/app/.git ]; then
   git clone --depth 1 https://github.com/mcontwitter-glitch/BIG-Network.git /workspace/bigchain/app
+else
+  (cd /workspace/bigchain/app && git fetch --depth 1 origin main && git reset --hard origin/main) || true
 fi
+mkdir -p /workspace/bigchain/wallets   # BIG wallet store — volume-backed, never in repo
+chmod 700 /workspace/bigchain/wallets 2>/dev/null || true
 cd /workspace/bigchain/app
 
 # 2) restore chain state on first boot (volume empty = fresh volume, not restart)

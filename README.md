@@ -26,6 +26,7 @@ All genesis supply sits in the **treasury wallet** — the company vault — whi
 | `bootstrap.js` | One-shot network bootstrap: treasury wallet, $BIG mint, genesis supply. Idempotent — safe to re-run; it detects existing state and skips. |
 | `gateway.js` | HTTP gateway (port 9090) exposing chain actions (stats, transfers) as JSON endpoints. |
 | `faucet.js` | $BIG faucet — drips test tokens to requester wallets. |
+| `wallet.js` | BIG Wallet Service — chain-backed custodial wallets (create / balance / send $BIG). Keys live only on the ledger volume. |
 | `fundloop.sh` | Watchdog loop that waits for the chain and runs bootstrap until `chain.json` appears. |
 | `big-chain-console.html` | Self-contained web console for the network (stats, faucet, transfers). |
 | `chain.example.json` | Example of the runtime manifest produced by `bootstrap.js` (RPC URL, treasury, mint, supply). |
@@ -42,6 +43,17 @@ solana-test-validator --ledger ledger --bind-address 127.0.0.1 --rpc-port 8899
 node bootstrap.js
 # 3. Start the gateway
 node gateway.js                      # listens on 9090
+
+### BIG Wallet Service (chain-backed)
+
+| Endpoint | Method | What it does |
+|---|---|---|
+| `/wallet/create` | POST `{}` | Creates a custodial BIG wallet — keypair stored on the ledger volume (`/workspace/bigchain/wallets`, mode 600), ATA created on chain, 1 SOL airdropped for fees. Returns the address. |
+| `/wallet/balance?address=<pubkey>` | GET | SOL + $BIG balance for any chain address; `custodial: true` if it's a network-held wallet. |
+| `/wallet/send` | POST `{from, to, amount}` | Sends $BIG from a custodial network wallet to any address (ATA auto-created). Signed on-pod, returns the chain sig. |
+| `/wallet/list` | GET | Public keys of all custodial network wallets (addresses only — secrets never leave the volume). |
+
+Wallets are BIG network assets: the chain holds the balances, the pod holds the keys, the treasury funds the faucet — nothing custodial lives off the pod.
 ```
 
 See `docs/OPS-RUNBOOK.md` for the full operational guide, restart ritual, and troubleshooting.
