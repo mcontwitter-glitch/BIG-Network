@@ -33,7 +33,7 @@ async function rpc(method, params) {
 const TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 
 async function parseTx(sig) {
-  const t = await rpc('getTransaction', [sig, { maxSupportedTransactionVersion: 0, encoding: 'json' }]);
+  const t = await rpc('getTransaction', [sig, { commitment: 'confirmed', maxSupportedTransactionVersion: 0, encoding: 'json' }]);
   if (!t) return null;
   const out = { sig, slot: t.slot, blockTime: t.blockTime, err: t.meta.err, fee: t.meta.fee, tokenTransfers: [], solTransfers: [] };
   const pre = {}, post = {};
@@ -116,7 +116,7 @@ http.createServer(async (req, res) => {
     const limit = Math.min(Number(new URL(req.url, 'http://big').searchParams.get('limit') || 15) || 15, 25);
     (async () => {
       try {
-        const sigs = (await rpc('getSignaturesForAddress', [MINT.toBase58(), { limit }])) || [];
+        const sigs = (await rpc('getSignaturesForAddress', [MINT.toBase58(), { limit, commitment: 'confirmed' }])) || [];
         const txs = [];
         for (const s of sigs) { const t = await parseTx(s.sig); if (t) txs.push(t); }
         res.writeHead(200); res.end(JSON.stringify({ ok: true, count: txs.length, transactions: txs }));
@@ -146,7 +146,7 @@ http.createServer(async (req, res) => {
         const b = await wallet.balances(conn, MINT, address);
         const out = { ok: true, address: b.address, sol: b.sol, big: b.big, custodial: b.custodial };
         if (wantTxs) {
-          const sigs = (await rpc('getSignaturesForAddress', [b.address, { limit: 20 }])) || [];
+          const sigs = (await rpc('getSignaturesForAddress', [b.address, { limit: 20, commitment: 'confirmed' }])) || [];
           const txs = [];
           for (const s of sigs) { const t = await parseTx(s.sig); if (t) txs.push(t); }
           out.transactions = txs;

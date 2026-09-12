@@ -77,7 +77,7 @@ function revealPhrase(pubB58) {
 async function balances(conn, MINT, address) {
   const pub = new PublicKey(address);
   const sol = await conn.getBalance(pub, 'confirmed');
-  const raw = await conn._rpcRequest('getTokenAccountsByOwner', [pub.toBase58(), { mint: MINT.toBase58() }, { encoding: 'jsonParsed' }]);
+  const raw = await conn._rpcRequest('getTokenAccountsByOwner', [pub.toBase58(), { mint: MINT.toBase58() }, { encoding: 'jsonParsed', commitment: 'confirmed' }]);
   // _rpcRequest returns the full JSON-RPC body in this web3.js version ({result:{value:[...]}}) —
   // reading .value directly always returned undefined => balances read as 0. Handle both shapes.
   const accs = (raw.result && raw.result.value) || raw.value || [];
