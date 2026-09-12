@@ -200,8 +200,11 @@ http.createServer(async (req, res) => {
         let sig = reportedSig;
         try {
           const rawSigs = await rpc('getSignaturesForAddress', [dest.toBase58(), { limit: 5, commitment: 'confirmed' }]);
-          const landed = (rawSigs || []).find(x => !x.err);
-          if (landed && landed.signature) sig = landed.signature;
+          for (const x of rawSigs || []) {
+            if (x.err) continue;
+            const t = await parseTx(x.signature);
+            if (t && t.kind === 'TRANSFER' && t.to === dest.toBase58()) { sig = x.signature; break; }
+          }
         } catch (e) { /* keep reported sig on lookup failure */ }
         claims.set(address, Date.now());
         res.writeHead(200);
