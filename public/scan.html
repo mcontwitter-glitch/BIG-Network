@@ -5,63 +5,86 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BIGscan — BIG Chain Explorer</title>
 <style>
+  :root{
+    --bg0:#040910; --bg1:#060f1a; --panel:#071522; --panel2:#0a1c2c;
+    --border:#0f3d52; --border-lit:#1a6b8c;
+    --cyan:#4be8ff; --cyan-dim:#2c9cb8; --cyan-glow:rgba(75,232,255,.55);
+    --green:#5cf59a; --amber:#ffcf5c; --red:#ff6b6b; --ink:#c9edf5; --dim:#5e8a9a;
+  }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#0b0e14; color:#e8eaf0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100vh; padding:24px 12px; }
+  body {
+    background:
+      radial-gradient(1100px 620px at 50% -8%, rgba(20,80,110,.35) 0%, rgba(4,9,16,0) 60%),
+      repeating-linear-gradient(0deg, rgba(75,232,255,.028) 0px, rgba(75,232,255,.028) 1px, transparent 1px, transparent 3px),
+      linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 100%);
+    color:var(--ink); font-family:'Consolas','SF Mono','Courier New',monospace;
+    min-height:100vh; padding:24px 12px; letter-spacing:.2px;
+  }
   .wrap { width:100%; max-width:760px; margin:0 auto; }
   .top { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
-  .brand { font-size:24px; font-weight:800; color:#e8eaf0; }
-  .brand span { color:#f5a623; }
-  .brand small { display:block; font-size:11px; color:#8a93a6; font-weight:400; letter-spacing:2px; text-transform:uppercase; }
+  .brand { font-size:22px; font-weight:800; color:var(--ink); letter-spacing:2px; text-transform:uppercase; }
+  .brand span { color:var(--cyan); text-shadow:0 0 14px var(--cyan-glow); }
+  .brand small { display:block; font-size:10px; color:var(--dim); font-weight:400; letter-spacing:2.5px; text-transform:uppercase; margin-top:2px; }
+  .livebadge { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border:1px solid var(--border-lit); color:var(--green); font-size:10px; letter-spacing:2px; text-transform:uppercase; background:rgba(92,245,154,.06); }
+  .livedot { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 1.8s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
   .searchbar { display:flex; gap:8px; margin-bottom:20px; }
-  .searchbar input { flex:1; padding:13px 16px; background:#141926; border:1px solid #2a3450; border-radius:10px; color:#e8eaf0; font-size:14px; font-family:monospace; outline:none; }
-  .searchbar input:focus { border-color:#f5a623; }
-  .searchbar button { padding:13px 22px; background:#f5a623; border:none; border-radius:10px; color:#0b0e14; font-weight:700; font-size:14px; cursor:pointer; }
-  .searchbar button:hover { background:#ffc14d; }
-  .card { background:#141926; border:1px solid #232b3d; border-radius:14px; padding:20px; margin-bottom:14px; }
-  .card h3 { font-size:14px; color:#f5a623; text-transform:uppercase; letter-spacing:1px; margin-bottom:14px; }
-  .row { display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid #1c2436; font-size:13px; flex-wrap:wrap; }
+  .searchbar input { flex:1; padding:13px 16px; background:var(--panel); border:1px solid var(--border); color:var(--ink); font-size:13px; font-family:inherit; outline:none; transition:border-color .15s, box-shadow .15s; }
+  .searchbar input::placeholder { color:#3d5c68; }
+  .searchbar input:focus { border-color:var(--cyan); box-shadow:0 0 0 1px var(--cyan-dim), 0 0 14px var(--cyan-glow); }
+  .searchbar button { padding:13px 22px; background:transparent; border:1px solid var(--cyan); color:var(--cyan); font-weight:700; font-size:12px; letter-spacing:2px; text-transform:uppercase; cursor:pointer; font-family:inherit; transition:all .15s; }
+  .searchbar button:hover { background:var(--cyan); color:#04121a; box-shadow:0 0 18px var(--cyan-glow); }
+
+  .card { position:relative; background:linear-gradient(180deg, var(--panel2), var(--panel)); border:1px solid var(--border); padding:20px; margin-bottom:14px; clip-path:polygon(0 10px,10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%); }
+  .card::before, .card::after { content:''; position:absolute; width:13px; height:13px; border:1px solid var(--cyan-dim); opacity:.7; }
+  .card::before { top:-1px; left:-1px; border-right:none; border-bottom:none; }
+  .card::after { bottom:-1px; right:-1px; border-left:none; border-top:none; }
+  .card h3 { font-size:11.5px; color:var(--cyan); text-transform:uppercase; letter-spacing:2.5px; margin-bottom:14px; font-weight:700; text-shadow:0 0 10px var(--cyan-glow); }
+  .card h3::before { content:'// '; color:var(--cyan-dim); font-weight:400; }
+
+  .row { display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid #0c2634; font-size:12.5px; flex-wrap:wrap; }
   .row:last-child { border-bottom:none; }
-  .row .k { color:#8a93a6; }
-  .row .v { font-family:monospace; word-break:break-all; text-align:right; }
-  .row .v a { color:#e8eaf0; text-decoration:none; border-bottom:1px dashed #f5a623; }
-  .badges { margin-left:6px; }
-  .badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:700; letter-spacing:.5px; margin-left:6px; vertical-align:middle; }
-  .badge.gold { background:#2a1f05; color:#f5a623; border:1px solid #f5a62333; }
-  .badge.green { background:#0f2416; color:#7ede96; border:1px solid #1e5c2e; }
-  .badge.red { background:#2a1010; color:#ed7e7e; border:1px solid #5c1e1e; }
-  .tx { padding:12px 0; border-bottom:1px solid #1c2436; }
+  .row .k { color:var(--dim); text-transform:uppercase; font-size:10.5px; letter-spacing:1px; }
+  .row .v { font-family:inherit; word-break:break-all; text-align:right; color:var(--ink); }
+  .row .v a { color:var(--ink); text-decoration:none; border-bottom:1px dashed var(--cyan-dim); }
+  .badge { display:inline-block; padding:2px 8px; font-size:9.5px; font-weight:700; letter-spacing:.5px; margin-left:6px; vertical-align:middle; text-transform:uppercase; }
+  .badge.gold { background:rgba(255,207,92,.08); color:var(--amber); border:1px solid rgba(255,207,92,.3); }
+  .badge.green { background:rgba(92,245,154,.08); color:var(--green); border:1px solid rgba(92,245,154,.3); }
+  .badge.red { background:rgba(255,107,107,.08); color:var(--red); border:1px solid rgba(255,107,107,.3); }
+  .tx { padding:12px 0; border-bottom:1px solid #0c2634; }
   .tx:last-child { border-bottom:none; }
-  .tx .l1 { display:flex; justify-content:space-between; gap:8px; font-size:12px; color:#8a93a6; margin-bottom:5px; flex-wrap:wrap; }
-  .tx .l1 a { color:#f5a623; text-decoration:none; font-family:monospace; font-size:12px; }
-  .tx .l2 { font-size:14px; }
-  .tx .l2 .from, .tx .l2 .to { font-family:monospace; font-size:12px; color:#8a93a6; text-decoration:none; }
-  .tx .l2 .to { color:#7ede96; }
-  .tx .l2 .to:hover, .tx .l2 .from:hover { color:#f5a623; }
-  .amt { color:#f5a623; font-weight:700; font-family:monospace; }
-  .amt.sol { color:#7eb8ed; }
-  .empty { color:#8a93a6; font-size:13px; padding:16px 0; text-align:center; }
+  .tx .l1 { display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--dim); margin-bottom:5px; flex-wrap:wrap; }
+  .tx .l1 a { color:var(--cyan-dim); text-decoration:none; font-family:inherit; font-size:11.5px; }
+  .tx .l2 { font-size:13px; }
+  .tx .l2 .from, .tx .l2 .to { font-family:inherit; font-size:11.5px; color:var(--dim); text-decoration:none; }
+  .tx .l2 .to { color:var(--green); }
+  .tx .l2 .to:hover, .tx .l2 .from:hover { color:var(--cyan); }
+  .amt { color:var(--cyan); font-weight:700; font-family:inherit; text-shadow:0 0 6px var(--cyan-glow); }
+  .amt.sol { color:#7eb8ed; text-shadow:none; }
+  .empty { color:var(--dim); font-size:12.5px; padding:16px 0; text-align:center; }
   .homegrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:14px; }
-  .tile { background:#141926; border:1px solid #232b3d; border-radius:12px; padding:16px; text-align:center; }
-  .tile .v { font-size:20px; font-weight:700; color:#f5a623; }
-  .tile .k { font-size:11px; color:#8a93a6; text-transform:uppercase; letter-spacing:1px; margin-top:4px; }
+  .tile { background:var(--panel); border:1px solid var(--border); padding:16px; text-align:center; }
+  .tile .v { font-size:19px; font-weight:700; color:var(--cyan); text-shadow:0 0 8px var(--cyan-glow); }
+  .tile .k { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:1.5px; margin-top:4px; }
   .navlinks { text-align:center; margin-top:18px; }
-  .navlinks a { color:#8a93a6; font-size:13px; text-decoration:none; margin:0 10px; }
-  .navlinks a:hover { color:#f5a623; }
-  .loading { color:#8a93a6; text-align:center; padding:24px; font-size:13px; }
-  .note { font-size:11px; color:#5c637a; margin-top:10px; line-height:1.5; }
+  .navlinks a { color:var(--dim); font-size:12px; text-decoration:none; margin:0 10px; text-transform:uppercase; letter-spacing:1px; }
+  .navlinks a:hover { color:var(--cyan); }
+  .loading { color:var(--dim); text-align:center; padding:24px; font-size:12.5px; letter-spacing:1px; text-transform:uppercase; }
+  .note { font-size:10.5px; color:#3d5c68; margin-top:10px; line-height:1.6; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
-    <div class="brand">BIG<span>scan</span><small>BIG Chain Explorer</small></div>
+    <div class="brand">BIG<span>scan</span><small>Chain Explorer // Node BIG-01</small></div>
+    <span class="livebadge"><span class="livedot"></span>Live Sim</span>
   </div>
   <div class="searchbar">
     <input id="q" placeholder="Search address / transaction signature" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')go()">
     <button onclick="go()">Search</button>
   </div>
   <div id="view"><div class="loading">Loading latest activity…</div></div>
-  <div class="navlinks"><a href="/">🚰 Faucet</a><a href="/scan">Home</a></div>
+  <div class="navlinks"><a href="/">Faucet</a><a href="/scan">Home</a></div>
 </div>
 
 <script>
@@ -94,10 +117,10 @@ async function home(){
     '<div class="tile"><div class="v">#'+(stats?stats.slot:'—')+'</div><div class="k">Slot</div></div>'+
     '<div class="tile"><div class="v">'+(recent&&recent.transactions?recent.transactions.filter(t=>!t.err).length:'—')+'</div><div class="k">Recent OK txs</div></div>'+
     '</div>';
-  h += '<div class="card"><h3>📡 Latest $BIG Activity</h3>';
+  h += '<div class="card"><h3>Latest $BIG Activity</h3>';
   if(recent && recent.transactions && recent.transactions.length){
     h += recent.transactions.map(t=>txRow(t)).join('');
-  } else h += '<div class="empty">No token activity yet — <a href="/" style="color:#f5a623">claim from the faucet</a> to make the first one.</div>';
+  } else h += '<div class="empty">No token activity yet — <a href="/" style="color:var(--cyan)">claim from the faucet</a> to make the first one.</div>';
   h += '</div>';
   h += '<div class="note">Home feed shows the latest $BIG token transactions (faucet drips, genesis, transfers). Search any address or signature for full detail.</div>';
   document.getElementById('view').innerHTML = h;
@@ -114,7 +137,7 @@ async function txView(sig){
   document.getElementById('view').innerHTML = '<div class="loading">Fetching transaction…</div>';
   const t = await j('/api/tx?sig='+encodeURIComponent(sig)).catch(()=>null);
   if(!t || t.error){ document.getElementById('view').innerHTML='<div class="empty">Transaction not found on this chain.</div>'; return; }
-  let h = '<div class="card"><h3>🧾 Transaction</h3>';
+  let h = '<div class="card"><h3>Transaction</h3>';
   h += row('Signature','<span class="v">'+esc(t.sig)+'</span>');
   h += row('Status', t.err ? '<span class="badge red">FAILED</span>' : '<span class="badge green">SUCCESS</span>');
   h += row('Slot', '#'+t.slot);
@@ -139,13 +162,13 @@ async function addrView(addr){
   document.getElementById('view').innerHTML = '<div class="loading">Fetching account…</div>';
   const [b, txs] = await Promise.all([ j('/api/address?address='+encodeURIComponent(addr)).catch(()=>null), j('/api/address?address='+encodeURIComponent(addr)+'&txs=1').catch(()=>null) ]);
   if(!b || b.error){ document.getElementById('view').innerHTML='<div class="empty">Account not found.</div>'; return; }
-  let h = '<div class="card"><h3>👤 Account'+(b.custodial?'<span class="badge gold">BIG CUSTODIAL</span>':'')+(addr===TREASURY?'<span class="badge gold">TREASURY</span>':'')+'</h3>';
+  let h = '<div class="card"><h3>Account'+(b.custodial?'<span class="badge gold">BIG CUSTODIAL</span>':'')+(addr===TREASURY?'<span class="badge gold">TREASURY</span>':'')+'</h3>';
   h += row('Address','<span class="v">'+esc(b.address)+'</span>');
   h += row('$BIG Balance','<span class="v amt">'+fmt(b.big)+' $BIG</span>');
   h += row('SOL Balance','<span class="v amt sol">'+fmt(b.sol)+' SOL</span>');
   h += row('Custodial', b.custodial ? '<span class="badge gold">YES — keys on BIG ledger</span>' : '<span class="badge">NO — external wallet</span>');
   h += '</div>';
-  h += '<div class="card"><h3>📜 Recent Activity</h3>';
+  h += '<div class="card"><h3>Recent Activity</h3>';
   if(txs && txs.transactions && txs.transactions.length){
     h += txs.transactions.map(t=>{
       let body;

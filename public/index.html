@@ -5,44 +5,76 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BIG Chain — Faucet</title>
 <style>
+  :root{
+    --bg0:#040910; --bg1:#060f1a; --panel:#071522; --panel2:#0a1c2c;
+    --border:#0f3d52; --border-lit:#1a6b8c;
+    --cyan:#4be8ff; --cyan-dim:#2c9cb8; --cyan-glow:rgba(75,232,255,.55);
+    --green:#5cf59a; --amber:#ffcf5c; --red:#ff6b6b; --ink:#c9edf5; --dim:#5e8a9a;
+  }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:#0b0e14; color:#e8eaf0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:32px 16px; }
+  html,body { min-height:100vh; }
+  body {
+    background:
+      radial-gradient(1100px 620px at 50% -8%, rgba(20,80,110,.35) 0%, rgba(4,9,16,0) 60%),
+      repeating-linear-gradient(0deg, rgba(75,232,255,.028) 0px, rgba(75,232,255,.028) 1px, transparent 1px, transparent 3px),
+      linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 100%);
+    color:var(--ink); font-family:'Consolas','SF Mono','Courier New',monospace;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:32px 16px;
+    letter-spacing:.2px;
+  }
   .wrap { width:100%; max-width:480px; }
-  .logo { text-align:center; margin-bottom:8px; }
-  .logo .big { font-size:44px; font-weight:800; color:#f5a623; letter-spacing:-1px; }
-  .logo .chain { font-size:16px; color:#8a93a6; letter-spacing:6px; text-transform:uppercase; margin-top:2px; }
-  .tagline { text-align:center; color:#8a93a6; font-size:14px; margin-bottom:28px; }
-  .card { background:#141926; border:1px solid #232b3d; border-radius:14px; padding:24px; margin-bottom:16px; }
-  .card h2 { font-size:15px; color:#f5a623; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; }
-  input[type=text] { width:100%; padding:14px; background:#0b0e14; border:1px solid #2a3450; border-radius:10px; color:#e8eaf0; font-size:14px; font-family:monospace; outline:none; }
-  input[type=text]:focus { border-color:#f5a623; }
-  .btn { width:100%; margin-top:12px; padding:14px; background:#f5a623; border:none; border-radius:10px; color:#0b0e14; font-size:16px; font-weight:700; cursor:pointer; transition:background .15s; }
-  .btn:hover:not(:disabled) { background:#ffc14d; }
-  .btn:disabled { opacity:.5; cursor:wait; }
-  .btn.ghost { background:transparent; border:1px solid #2a3450; color:#8a93a6; font-weight:500; font-size:14px; }
-  .btn.ghost:hover { border-color:#f5a623; color:#f5a623; background:transparent; }
-  .msg { margin-top:14px; padding:14px; border-radius:10px; font-size:14px; line-height:1.5; word-break:break-all; display:none; }
-  .msg.ok { display:block; background:#0f2416; border:1px solid #1e5c2e; color:#7ede96; }
-  .msg.err { display:block; background:#2a1010; border:1px solid #5c1e1e; color:#ed7e7e; }
-  .msg a { color:#f5a623; text-decoration:none; border-bottom:1px dashed #f5a623; }
-  .stats { display:flex; gap:12px; margin-bottom:16px; }
-  .stat { flex:1; background:#141926; border:1px solid #232b3d; border-radius:12px; padding:14px; text-align:center; }
-  .stat .v { font-size:18px; font-weight:700; color:#e8eaf0; }
-  .stat .k { font-size:11px; color:#8a93a6; text-transform:uppercase; letter-spacing:1px; margin-top:4px; }
-  .foot { text-align:center; margin-top:24px; }
-  .foot a { color:#8a93a6; font-size:14px; text-decoration:none; margin:0 10px; }
-  .foot a:hover { color:#f5a623; }
-  .phrase { font-family:monospace; font-size:13px; background:#0b0e14; border:1px solid #2a3450; border-radius:8px; padding:12px; color:#f5a623; word-spacing:6px; line-height:1.7; margin:8px 0; user-select:all; }
-  .warn { font-size:12px; color:#ed9c3c; margin-top:8px; line-height:1.5; }
-  .copyrow { display:flex; gap:8px; align-items:center; margin-top:6px; }
-  .addr { font-family:monospace; font-size:12px; color:#7ede96; word-break:break-all; flex:1; user-select:all; }
-  .mini { padding:6px 12px; font-size:11px; background:#1c2436; border:1px solid #2a3450; border-radius:6px; color:#8a93a6; cursor:pointer; }
+  .logo { text-align:center; margin-bottom:4px; position:relative; }
+  .logo .big { font-size:40px; font-weight:800; color:var(--cyan); letter-spacing:3px; text-shadow:0 0 18px var(--cyan-glow), 0 0 2px var(--cyan); text-transform:uppercase; }
+  .logo .chain { font-size:13px; color:var(--dim); letter-spacing:6px; text-transform:uppercase; margin-top:2px; }
+  .livebadge { display:inline-flex; align-items:center; gap:6px; margin:12px auto 0; padding:4px 12px; border:1px solid var(--border-lit); border-radius:2px; color:var(--green); font-size:10px; letter-spacing:2px; text-transform:uppercase; background:rgba(92,245,154,.06); }
+  .livedot { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 1.8s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .tagline { text-align:center; color:var(--dim); font-size:12px; margin:16px 0 26px; letter-spacing:1px; text-transform:uppercase; }
+
+  .card { position:relative; background:linear-gradient(180deg, var(--panel2), var(--panel)); border:1px solid var(--border); padding:22px 20px; margin-bottom:16px; clip-path:polygon(0 10px,10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%); }
+  .card::before, .card::after { content:''; position:absolute; width:14px; height:14px; border:1px solid var(--cyan-dim); opacity:.7; }
+  .card::before { top:-1px; left:-1px; border-right:none; border-bottom:none; }
+  .card::after { bottom:-1px; right:-1px; border-left:none; border-top:none; }
+  .card h2 { font-size:12px; color:var(--cyan); text-transform:uppercase; letter-spacing:2.5px; margin-bottom:16px; font-weight:700; text-shadow:0 0 10px var(--cyan-glow); display:flex; align-items:center; gap:8px; }
+  .card h2::before { content:'//'; color:var(--cyan-dim); font-weight:400; }
+
+  input[type=text] { width:100%; padding:13px 14px; background:var(--bg0); border:1px solid var(--border); color:var(--ink); font-size:13px; font-family:inherit; outline:none; transition:border-color .15s, box-shadow .15s; }
+  input[type=text]::placeholder { color:#3d5c68; }
+  input[type=text]:focus { border-color:var(--cyan); box-shadow:0 0 0 1px var(--cyan-dim), 0 0 14px var(--cyan-glow); }
+
+  .btn { width:100%; margin-top:12px; padding:13px; background:transparent; border:1px solid var(--cyan); color:var(--cyan); font-size:13px; font-weight:700; letter-spacing:2px; text-transform:uppercase; cursor:pointer; transition:all .15s; font-family:inherit; }
+  .btn:hover:not(:disabled) { background:var(--cyan); color:#04121a; box-shadow:0 0 20px var(--cyan-glow); }
+  .btn:disabled { opacity:.4; cursor:wait; }
+  .btn.ghost { border:1px dashed var(--border-lit); color:var(--dim); }
+  .btn.ghost:hover { border-color:var(--cyan); color:var(--cyan); background:transparent; box-shadow:0 0 14px var(--cyan-glow); }
+
+  .msg { margin-top:14px; padding:13px 14px; border-radius:0; font-size:12.5px; line-height:1.6; word-break:break-all; display:none; border-left:2px solid; }
+  .msg.ok { display:block; background:rgba(92,245,154,.06); border-color:var(--green); color:var(--green); }
+  .msg.err { display:block; background:rgba(255,107,107,.06); border-color:var(--red); color:var(--red); }
+  .msg a { color:var(--cyan); text-decoration:none; border-bottom:1px dashed var(--cyan); }
+
+  .stats { display:flex; gap:10px; margin-bottom:16px; }
+  .stat { flex:1; background:var(--panel); border:1px solid var(--border); padding:13px; text-align:center; }
+  .stat .v { font-size:17px; font-weight:700; color:var(--cyan); text-shadow:0 0 8px var(--cyan-glow); }
+  .stat .k { font-size:9.5px; color:var(--dim); text-transform:uppercase; letter-spacing:1.5px; margin-top:4px; }
+
+  .foot { text-align:center; margin-top:22px; }
+  .foot a { color:var(--dim); font-size:12px; text-decoration:none; margin:0 10px; letter-spacing:1px; text-transform:uppercase; border-bottom:1px solid transparent; }
+  .foot a:hover { color:var(--cyan); border-color:var(--cyan); }
+
+  .phrase { font-family:inherit; font-size:12.5px; background:var(--bg0); border:1px solid var(--border); padding:12px; color:var(--amber); word-spacing:6px; line-height:1.8; margin:8px 0; user-select:all; }
+  .warn { font-size:11px; color:var(--amber); margin-top:8px; line-height:1.6; opacity:.85; }
+  .copyrow { display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap; }
+  .addr { font-family:inherit; font-size:11.5px; color:var(--green); word-break:break-all; flex:1; user-select:all; }
+  .mini { padding:6px 12px; font-size:10.5px; background:transparent; border:1px solid var(--border-lit); color:var(--dim); cursor:pointer; letter-spacing:1px; text-transform:uppercase; font-family:inherit; }
+  .mini:hover { border-color:var(--cyan); color:var(--cyan); }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="logo"><div class="big">BIG</div><div class="chain">Chain</div></div>
-  <p class="tagline">The standalone ledger. Claim your $BIG.</p>
+  <div class="logo"><div class="big">BIG</div><div class="chain">Chain // Faucet</div></div>
+  <div style="text-align:center"><span class="livebadge"><span class="livedot"></span>Live Network</span></div>
+  <p class="tagline">// The standalone ledger — claim your $BIG</p>
 
   <div class="stats">
     <div class="stat"><div class="v" id="supply">—</div><div class="k">Supply</div></div>
@@ -50,21 +82,21 @@
   </div>
 
   <div class="card">
-    <h2>🚰 Faucet</h2>
+    <h2>Faucet</h2>
     <input type="text" id="addr" placeholder="Paste your BIG / Solana address" autocomplete="off" spellcheck="false">
     <button class="btn" id="claim" onclick="claim()">Claim 100 $BIG</button>
     <div class="msg" id="msg"></div>
-    <p class="warn" id="rules" style="display:none">5-minute cooldown per address · bonus 1 SOL for fees · works with any standard Solana wallet (Phantom, Solflare, Backpack)</p>
+    <p class="warn" id="rules" style="display:none;color:var(--dim)">5-minute cooldown per address · bonus 1 SOL for fees · works with any standard Solana wallet (Phantom, Solflare, Backpack)</p>
   </div>
 
   <div class="card">
-    <h2>🆕 No wallet yet?</h2>
+    <h2>No Wallet Yet</h2>
     <button class="btn ghost" id="create" onclick="createWallet()">Create a BIG custodial wallet</button>
     <div class="msg" id="wmsg"></div>
   </div>
 
   <div class="foot">
-    <a href="/scan">🔎 BIGscan</a><a href="/stats">Stats</a>
+    <a href="/scan">BIGscan</a><a href="/stats">Stats</a>
   </div>
 </div>
 
