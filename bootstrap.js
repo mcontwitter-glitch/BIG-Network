@@ -35,8 +35,9 @@ async function main() {
 
   // 3) $BIG mint (classic SPL for max wallet compatibility)
   let mintPub;
+  let km;
   if (fs.existsSync('mint.key')) {
-    const km = Keypair.fromSecretKey(Buffer.from(JSON.parse(fs.readFileSync('mint.key'))));
+    km = Keypair.fromSecretKey(Buffer.from(JSON.parse(fs.readFileSync('mint.key'))));
     mintPub = km.publicKey;
     console.log('MINT (existing):', mintPub.toBase58());
   } else {
