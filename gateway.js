@@ -102,8 +102,8 @@ http.createServer(async (req, res) => {
 
 
   // ===== FAUCET CLAIM PAGE + BIGSCAN =====
-  if (req.url === '/' || req.url === '/index.html' || req.url === '/scan' || req.url === '/scan/') {
-    const page = req.url.startsWith('/scan') ? 'scan.html' : 'index.html';
+  if (req.url === '/' || req.url === '/index.html' || req.url === '/scan' || req.url === '/scan/' || req.url === '/wallet' || req.url === '/wallet.html') {
+    const page = req.url.startsWith('/scan') ? 'scan.html' : (req.url.startsWith('/wallet') ? 'wallet.html' : 'index.html');
     fs.readFile(path.join(__dirname, 'public', page), (e, d) => {
       if (e) { res.writeHead(500); return res.end('page missing'); }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
