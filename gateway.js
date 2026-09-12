@@ -34,7 +34,7 @@ const TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 
 async function parseTx(sig) {
   const t = await rpc('getTransaction', [sig, { commitment: 'confirmed', maxSupportedTransactionVersion: 0, encoding: 'json' }]);
-  if (!t) return null;
+  if (!t || !t.meta || !t.transaction) return null; // unparseable/legacy entry — skip cleanly
   const out = { sig, slot: t.slot, blockTime: t.blockTime, err: t.meta.err, fee: t.meta.fee, tokenTransfers: [], solTransfers: [] };
   const pre = {}, post = {};
   (t.meta.preTokenBalances || []).forEach(b => { pre[b.accountIndex] = { owner: b.owner, ui: Number(b.uiTokenAmount.uiAmount || 0) }; });
