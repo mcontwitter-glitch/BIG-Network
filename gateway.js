@@ -4,6 +4,7 @@ const http = require('http');
 const { Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 const splToken = require('@solana/spl-token');
 const fs = require('fs');
+const wallet = require('./wallet');
 
 const VAL = 'http://127.0.0.1:8899';
 const MINT = new PublicKey('DmQD1wHq2mi2Q6cLzKLbosxGJaqp9QS9qobL5Ge8XaAz');
