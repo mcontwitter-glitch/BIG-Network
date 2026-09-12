@@ -2,9 +2,22 @@
 // A BIG network asset: keypairs live ONLY on the ledger volume (/workspace/bigchain/wallets),
 // never in the repo. Every wallet is a real chain account holding real $BIG.
 const { Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
+const { generateMnemonic, mnemonicToSeedSync } = require('@scure/bip39');
 const splToken = require('@spl-token');
+const { wordlist } = require('@scure/bip39/wordlists/english');
+const { derivePath } = require('ed25519-hd-key');
 const fs = require('fs');
 const path = require('path');
+
+// SOLANA_STANDARD_PATH — the derivation path used by Phantom/Solflare/Backpack (m/44'/501'/0'/0').
+// Wallets created here import into those apps with their 12-word phrase.
+const SOLANA_STANDARD_PATH = "m/44'/501'/0'/0'";
+
+function keypairFromPhrase(phrase) {
+  const seed = Buffer.from(mnemonicToSeedSync(phrase, wordlist)).toString('hex');
+  const { key } = derivePath(SOLANA_STANDARD_PATH, seed);
+  return Keypair.fromSeed(Buffer.from(key));
+}
 
 const WALLET_DIR = process.env.BIG_WALLET_DIR || '/workspace/bigchain/wallets';
 
@@ -33,14 +46,25 @@ async function ensureATA(conn, MINT, payer, owner) {
   return ata;
 }
 
-// POST /wallet/create — make a new custodial BIG wallet: keypair on volume, ATA on chain, gas funded.
+// POST /wallet/create — make a new custodial BIG wallet: BIP39 seed phrase -> standard Solana
+// derivation -> keypair. Phrase + secret live on the volume (mode 600); the phrase is returned
+// once at creation and re-revealable via /wallet/phrase for the wallet owner.
 async function createWallet(conn, MINT, TREASURY) {
-  const kp = Keypair.generate();
+  const phrase = generateMnemonic(wordlist, 128); // 12 words
+  const kp = keypairFromPhrase(phrase);
   fs.mkdirSync(WALLET_DIR, { recursive: true });
-  fs.writeFileSync(walletPath(kp.publicKey.toBase58()), JSON.stringify({ secret: Array.from(kp.secretKey) }, null, 0), { mode: 0o600 });
+  fs.writeFileSync(walletPath(kp.publicKey.toBase58()), JSON.stringify({ secret: Array.from(kp.secretKey), phrase }, null, 0), { mode: 0o600 });
   await airdropFees(conn, kp.publicKey);
   await ensureATA(conn, MINT, kp, kp.publicKey); // wallet pays its own ATA rent
-  return kp.publicKey.toBase58();
+  return { address: kp.publicKey.toBase58(), phrase };
+}
+
+// GET /wallet/phrase?address= — reveal the dedicated seed phrase of a custodial wallet.
+// Legacy wallets created before phrases have none (returns null) — their raw key still works.
+function revealPhrase(pubB58) {
+  if (!walletExists(pubB58)) throw new Error('Not a custodial BIG network wallet.');
+  const raw = JSON.parse(fs.readFileSync(walletPath(pubB58), 'utf8'));
+  return raw.phrase || null;
 }
 
 // GET /wallet/balance?address=... — SOL + $BIG for any chain address.
@@ -75,4 +99,4 @@ function listWallets() {
   return fs.readdirSync(WALLET_DIR).filter(f => f.endsWith('.json')).map(f => f.replace(/\.json$/, ''));
 }
 
-module.exports = { createWallet, balances, sendBig, listWallets, walletExists };
+module.exports = { createWallet, balances, sendBig, listWallets, walletExists, revealPhrase };

@@ -107,9 +107,9 @@ http.createServer(async (req, res) => {
     req.on('data', c => body += c);
     req.on('end', async () => {
       try {
-        const address = await wallet.createWallet(conn, MINT, TREASURY);
+        const { address, phrase } = await wallet.createWallet(conn, MINT, TREASURY);
         res.writeHead(200);
-        res.end(JSON.stringify({ ok: true, address, token: 'BIG', network: 'BIG Chain', custodial: 'BIG network asset — keys held on the ledger volume' }));
+        res.end(JSON.stringify({ ok: true, address, phrase, token: 'BIG', network: 'BIG Chain', custodial: 'BIG network asset — keys held on the ledger volume' }));
       } catch (e) {
         console.error('wallet create err', e.message);
         res.writeHead(500); res.end(JSON.stringify({ ok: false, error: 'Wallet creation failed — try again.' }));
@@ -150,10 +150,31 @@ http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.url.startsWith('/wallet/phrase')) {
+    (async () => {
+      try {
+        const u = new URL(req.url, 'http://x');
+        // optional gate: set BIG_PHRASE_KEY env (pod) to require ?key= match before going public
+        const gate = process.env.BIG_PHRASE_KEY;
+        if (gate && u.searchParams.get('key') !== gate) {
+          res.writeHead(403); return res.end(JSON.stringify({ ok: false, error: 'key required' }));
+        }
+        const address = u.searchParams.get('address');
+        if (!address) { res.writeHead(400); return res.end(JSON.stringify({ ok: false, error: 'address= required' })); }
+        const phrase = wallet.revealPhrase(address);
+        if (!phrase) { res.writeHead(404); return res.end(JSON.stringify({ ok: false, error: 'No seed phrase for this wallet (legacy wallet — use the custodial balance/send only).' })); }
+        res.writeHead(200); res.end(JSON.stringify({ ok: true, address, phrase, path: "m/44'/501'/0'/0'", note: 'Import into Phantom/Solflare/Backpack with this 12-word phrase, pointed at the BIG network RPC.' }));
+      } catch (e) {
+        res.writeHead(400); res.end(JSON.stringify({ ok: false, error: e.message }));
+      }
+    })();
+    return;
+  }
+
   if (req.url.startsWith('/wallet/list')) {
     res.writeHead(200); res.end(JSON.stringify({ ok: true, count: wallet.listWallets().length, wallets: wallet.listWallets() }));
     return;
   }
 
-  res.writeHead(404); res.end(JSON.stringify({error:'BIG Chain gateway — use /rpc, /drip, /stats, /wallet/create, /wallet/balance, /wallet/send, /wallet/list'}));
+  res.writeHead(404); res.end(JSON.stringify({error:'BIG Chain gateway — use /rpc, /drip, /stats, /wallet/create, /wallet/balance, /wallet/phrase, /wallet/send, /wallet/list'}));
 }).listen(9090, '0.0.0.0', () => console.log('gateway on 9090'));

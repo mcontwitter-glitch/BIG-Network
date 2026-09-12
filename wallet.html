@@ -117,6 +117,8 @@
       <input id="addrBal" placeholder="0xADDR / paste or tap a wallet below">
       <button id="btnBal">▸ QUERY BALANCE</button>
       <div class="out" id="outBal">—</div>
+      <button id="btnPhrase">▸ REVEAL SEED PHRASE</button>
+      <div class="out" id="outPhrase">Import your wallet anywhere — the 12 words below are yours alone. Phantom / Solflare / Backpack: paste phrase, use custom RPC.</div>
     </div>
   </div>
 
@@ -184,7 +186,9 @@ $('btnCreate').onclick = async () => {
     const { data: w } = await api('/wallet/create', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
     if (w.address) {
       localStorage.setItem('myBigWallet', w.address);
-      setOut($('outCreate'), '> WALLET_CREATED\n> address: ' + w.address + '\n> saved to this browser — copy it somewhere safe.', 'ok');
+      let msg = '> WALLET_CREATED\n> address: ' + w.address;
+      if (w.phrase) msg += '\n\n> YOUR SEED PHRASE (yours alone — write it down):\n' + w.phrase.toUpperCase() + '\n\n> path m/44\'501\'/0\'/0\' — imports into Phantom/Solflare with the BIG network RPC.';
+      setOut($('outCreate'), msg, 'ok');
       $('addrBal').value = w.address; $('fromSend').value = w.address; loadRoster();
     } else setOut($('outCreate'), w, 'bad');
   } catch (e) { setOut($('outCreate'), '> ERROR: ' + e.message, 'bad'); }
@@ -199,6 +203,22 @@ $('btnBal').onclick = async () => {
   setOut($('outBal'), '> querying ledger…');
   try { const { data } = await api('/wallet/balance?address=' + encodeURIComponent(a)); setOut($('outBal'), data, ''); }
   catch (e) { setOut($('outBal'), '> ERROR: ' + e.message, 'bad'); }
+};
+
+$('btnPhrase').onclick = async () => {
+  const a = $('addrBal').value.trim();
+  if (!a) { setOut($('outPhrase'), '> enter a wallet address above (or tap one from the roster)', 'bad'); return; }
+  setOut($('outPhrase'), '> decrypting phrase from ledger volume…');
+  try {
+    const r = await fetch(GW + '/wallet/phrase?address=' + encodeURIComponent(a));
+    const d = await r.json();
+    if (d.ok) {
+      setOut($('outPhrase'),
+        '> SEED PHRASE — DO NOT SHARE:\n\n' + (d.phrase||'').toUpperCase() +
+        '\n\n> derivation: ' + (d.path||"m/44'/501'/0'/0'") +
+        '\n> imports into Phantom / Solflare / Backpack — point at the BIG network RPC.', 'ok');
+    } else setOut($('outPhrase'), '> ' + (d.error || 'phrase unavailable'), 'bad');
+  } catch (e) { setOut($('outPhrase'), '> ERROR: ' + e.message, 'bad'); }
 };
 
 $('btnSend').onclick = async () => {
