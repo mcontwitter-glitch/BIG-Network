@@ -40,11 +40,17 @@ async function main() {
     mintPub = km.publicKey;
     console.log('MINT (existing):', mintPub.toBase58());
   } else {
-    const mint = Keypair.generate();
-    fs.writeFileSync('mint.key', JSON.stringify(Array.from(mint.secretKey)));
-    const mintPk = await createMint(conn, treasury, treasury.publicKey, treasury.publicKey, 9, mint);
-    mintPub = mintPk;
+    km = Keypair.generate();
+    fs.writeFileSync('mint.key', JSON.stringify(Array.from(km.secretKey)));
+    mintPub = km.publicKey;
     console.log('MINT (new):', mintPub.toBase58());
+  }
+  // fresh-genesis safety: key file may exist from an earlier chain while the
+  // mint account does not exist on THIS ledger — create it on-chain if absent
+  const mintInfo = await conn.getAccountInfo(mintPub);
+  if (!mintInfo) {
+    console.log('MINT account not on this chain — creating on-chain (existing key)');
+    await createMint(conn, treasury, mintPub, treasury.publicKey, treasury.publicKey, 9, km);
   }
 
   // 4) genesis supply -> treasury ATA: 404,000,000 BIG
@@ -68,4 +74,4 @@ async function main() {
   }, null, 2));
   console.log('bootstrap complete');
 }
-main().catch(e => { console.error('FATAL', e.message); process.exit(1); });
+main().catch(e => { console.error('FATAL', e.message, (e.logs || []).join(' | ')); process.exit(1); });
