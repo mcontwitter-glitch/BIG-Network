@@ -31,7 +31,13 @@ function loadKeypair(pubB58) {
 }
 
 async function airdropFees(conn, dest, lamports) {
-  try { await conn.requestAirdrop(dest, lamports || LAMPORTS_PER_SOL); } catch (e) { /* best-effort */ }
+  try { await conn.requestAirdrop(dest, lamports || LAMPORTS_PER_SOL); } catch (e) { console.error('airdrop err', e.message); }
+  // wait until the credit actually lands — ATA creation needs rent or the tx sim fails
+  for (let i = 0; i < 20; i++) {
+    try { const bal = await conn.getBalance(dest); if (bal > 0) return; } catch (e) { /* retry */ }
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  console.error('airdrop did not land in time for', dest.toBase58());
 }
 
 async function ensureATA(conn, MINT, payer, owner) {
