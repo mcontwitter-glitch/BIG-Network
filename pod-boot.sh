@@ -15,12 +15,17 @@ mkdir -p /workspace/bigchain/wallets   # BIG wallet store — volume-backed, nev
 chmod 700 /workspace/bigchain/wallets 2>/dev/null || true
 cd /workspace/bigchain/app
 
-# 2) restore chain state on first boot (volume empty = fresh volume, not restart)
-if [ ! -f /workspace/bigchain/ledger/genesis.bin ]; then
-  [ -z "$STATE_URL" ] && { echo "FATAL: STATE_URL not set and no ledger on volume"; exit 1; }
+# 2) restore KEYS from the state zip — but NOT the ledger snapshot.
+# The zip's snapshot is incompatible with this agave build (serde_snapshot panic, verified Sept 12).
+# Fresh genesis with the SAME treasury/mint keys is the reliable path: same addresses forever,
+# bootstrap.js re-creates the mint + genesis supply (fully idempotent).
+if [ ! -f /workspace/bigchain/treasury.key ]; then
+  [ -z "$STATE_URL" ] && { echo "FATAL: STATE_URL not set and no keys on volume"; exit 1; }
   curl -fsSL -o /tmp/state.zip "$STATE_URL"
-  (cd /workspace/bigchain && unzip -o /tmp/state.zip && rm -f /tmp/state.zip)
+  (cd /workspace/bigchain && unzip -o -j /tmp/state.zip treasury.key mint.key keys.env chain.json -d /workspace/bigchain/ && rm -f /tmp/state.zip) || true
 fi
+# never boot from a restored snapshot — fresh genesis only
+rm -rf /workspace/bigchain/ledger /tmp/solana-release*
 cp -f /workspace/bigchain/treasury.key /workspace/bigchain/mint.key /workspace/bigchain/keys.env /workspace/bigchain/chain.json /workspace/bigchain/app/ 2>/dev/null || true
 
 # 3) node 20
@@ -63,7 +68,7 @@ cat > /workspace/bigchain/big-supervisor.sh <<'EOS'
 #!/bin/bash
 while true; do
   if ! pgrep -f solana-test-validator >/dev/null; then
-    nohup solana-test-validator --ledger /workspace/bigchain/ledger --bind-address 0.0.0.0 --rpc-port 8899 > /workspace/bigchain/validator.log 2>&1 &
+    nohup solana-test-validator --ledger /workspace/bigchain/ledger --bind-address 0.0.0.0 --rpc-port 8899 --account-index spl-token-mint --account-index spl-token-owner > /workspace/bigchain/validator.log 2>&1 &
   fi
   cd /workspace/bigchain/app
   if ! pgrep -f gateway.js >/dev/null; then nohup node gateway.js > /workspace/bigchain/gateway.log 2>&1 & fi
