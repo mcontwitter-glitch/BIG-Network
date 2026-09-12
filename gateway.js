@@ -118,7 +118,7 @@ http.createServer(async (req, res) => {
       try {
         const sigs = (await rpc('getSignaturesForAddress', [MINT.toBase58(), { limit, commitment: 'confirmed' }])) || [];
         const txs = [];
-        for (const s of sigs) { const t = await parseTx(s.sig); if (t) txs.push(t); }
+        for (const s of sigs) { const t = await parseTx(s.signature || s.sig); if (t) txs.push(t); }
         res.writeHead(200); res.end(JSON.stringify({ ok: true, count: txs.length, transactions: txs }));
       } catch (e) { res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message })); }
     })();
@@ -148,7 +148,7 @@ http.createServer(async (req, res) => {
         if (wantTxs) {
           const sigs = (await rpc('getSignaturesForAddress', [b.address, { limit: 20, commitment: 'confirmed' }])) || [];
           const txs = [];
-          for (const s of sigs) { const t = await parseTx(s.sig); if (t) txs.push(t); }
+          for (const s of sigs) { const t = await parseTx(s.signature || s.sig); if (t) txs.push(t); }
           out.transactions = txs;
         }
         res.writeHead(200); res.end(JSON.stringify(out));
