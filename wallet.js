@@ -3,7 +3,7 @@
 // never in the repo. Every wallet is a real chain account holding real $BIG.
 const { Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 const { generateMnemonic, mnemonicToSeedSync } = require('@scure/bip39');
-const splToken = require('@spl-token');
+const splToken = require('@solana/spl-token');
 const { wordlist } = require('@scure/bip39/wordlists/english');
 const { derivePath } = require('ed25519-hd-key');
 const fs = require('fs');

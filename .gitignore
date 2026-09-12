@@ -1,12 +1,3 @@
-# SECRETS — never commit
-keys.env
-*.key
-faucet-keypair.json
-validator-keypair.json
-vote-account-keypair.json
-
-# runtime
-ledger/
 node_modules/
+testwallets/
 *.log
-chain.json

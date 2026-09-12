@@ -109,7 +109,7 @@
     <div class="panel">
       <h2>Mint Wallet <span class="cnt">CREATE</span></h2>
       <button class="solid" id="btnCreate">▸ MINT NEW BIG WALLET</button>
-      <div class="out" id="outCreate">Creates a keypair on the ledger volume, a $BIG token account, and funds gas. Key never leaves the pod.</div>
+      <div class="out" id="outCreate">Creates a dedicated 12-word seed phrase on the ledger volume, derives the keypair, creates a $BIG token account, funds gas. The phrase is yours — reveal it below to import this wallet into Phantom / Solflare / Backpack.</div>
     </div>
 
     <div class="panel">
@@ -132,6 +132,14 @@
     <button class="solid" id="btnSend">▸ EXECUTE TRANSFER</button>
     <div class="out" id="outSend">—</div>
     <div class="note">Signed on-pod by the custodial service · validated against ledger state before broadcast.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Key Vault <span class="cnt">SEED PHRASE</span></h2>
+    <input id="addrPhrase" placeholder="your BIG wallet address">
+    <button id="btnPhrase">▸ REVEAL SEED PHRASE</button>
+    <div class="out" id="outPhrase">Each wallet has its own 12-word phrase — import into any Solana-compatible wallet (Phantom / Solflare / Backpack) with the BIG network RPC and you control the same address.</div>
+    <div class="note">⚠ WRITE IT DOWN. Anyone with these 12 words controls this wallet. BIG network support will NEVER ask for it.</div>
   </div>
 
   <div class="panel">
@@ -196,7 +204,18 @@ $('btnCreate').onclick = async () => {
 };
 
 const mine = localStorage.getItem('myBigWallet');
-if (mine) { $('addrBal').value = mine; $('fromSend').value = mine; }
+if (mine) { $('addrBal').value = mine; $('fromSend').value = mine; $('addrPhrase').value = mine; }
+
+$('btnPhrase').onclick = async () => {
+  const a = $('addrPhrase').value.trim(); if (!a) return;
+  setOut($('outPhrase'), '> checking ledger vault…');
+  try {
+    const { data } = await api('/wallet/phrase?address=' + encodeURIComponent(a));
+    if (data.ok && data.phrase) {
+      setOut($('outPhrase'), '> SEED PHRASE — ' + a + '\n\n' + data.phrase.toUpperCase() + '\n\n> derivation path: ' + data.path + '\n> import: Phantom/Solflare/Backpack → import seed phrase → point RPC at the BIG network', 'ok');
+    } else setOut($('outPhrase'), data.error || 'no phrase found', 'bad');
+  } catch (e) { setOut($('outPhrase'), '> ERROR: ' + e.message, 'bad'); }
+};
 
 $('btnBal').onclick = async () => {
   const a = $('addrBal').value.trim(); if (!a) return;
@@ -241,7 +260,7 @@ async function loadRoster() {
     $('wcount').textContent = addrs.length + ' WALLET' + (addrs.length===1?'':'S');
     $('outList').innerHTML = addrs.map(a => {
       const s = typeof a === 'string' ? a : a.address;
-      return `<span class="addr" onclick="document.getElementById('addrBal').value='${s}';document.getElementById('toSend').value='${s}'">▸ ${s}</span>`;
+      return `<span class="addr" onclick="document.getElementById('addrBal').value='${s}';document.getElementById('toSend').value='${s}';document.getElementById('addrPhrase').value='${s}'">▸ ${s}</span>`;
     }).join('');
   } catch (e) { setOut($('outList'), '> roster unavailable: ' + e.message, 'bad'); }
 }
