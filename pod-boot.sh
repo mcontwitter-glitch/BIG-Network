@@ -36,7 +36,9 @@ if [ ! -x /usr/local/bin/solana-test-validator ]; then
   if [ ! -f /workspace/bigchain/solana-release.tar.bz2 ] || ! tar -tjf /workspace/bigchain/solana-release.tar.bz2 >/dev/null 2>&1; then
     echo "agave tarball missing or corrupt — downloading fresh"
     rm -f /workspace/bigchain/solana-release.tar.bz2
-    curl -fsSL -o /workspace/bigchain/solana-release.tar.bz2 \
+    # fast CDN mirror first (uploaded by BIGagent404), fall back to GitHub
+    curl -fsSL --max-time 600 -o /workspace/bigchain/solana-release.tar.bz2 "https://base44.app/api/apps/69f56986c51e35a876adf38d/files/mp/public/69f56986c51e35a876adf38d/d4262721b_agavetar.bz2" \
+      || curl -fsSL -o /workspace/bigchain/solana-release.tar.bz2 \
       https://github.com/anza-xyz/agave/releases/download/v2.1.21/solana-release-x86_64-unknown-linux-gnu.tar.bz2
   fi
   tar -xjf /workspace/bigchain/solana-release.tar.bz2 -C /tmp || { echo "FATAL: agave extract failed"; exit 1; }
