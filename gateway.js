@@ -193,7 +193,16 @@ http.createServer(async (req, res) => {
           );
           await sendAndConfirmTransaction(conn, tx, [TREASURY]);
         }
-        const sig = await splToken.transfer(conn, TREASURY, treasuryATA, destATA, TREASURY.publicKey, BigInt(DRIP * 1e9), [], undefined, splToken.TOKEN_PROGRAM_ID);
+        const reportedSig = await splToken.transfer(conn, TREASURY, treasuryATA, destATA, TREASURY.publicKey, BigInt(DRIP * 1e9), [], undefined, splToken.TOKEN_PROGRAM_ID);
+        // web3.js sendAndConfirm retry loop re-signs with a fresh blockhash on retry — the reported
+        // sig can belong to the discarded first attempt. Resolve the REAL landed tx from the
+        // recipient's confirmed activity so BIGscan links always point at the transfer that exists.
+        let sig = reportedSig;
+        try {
+          const rawSigs = await rpc('getSignaturesForAddress', [dest.toBase58(), { limit: 5, commitment: 'confirmed' }]);
+          const landed = (rawSigs || []).find(x => !x.err);
+          if (landed && landed.signature) sig = landed.signature;
+        } catch (e) { /* keep reported sig on lookup failure */ }
         claims.set(address, Date.now());
         res.writeHead(200);
         res.end(JSON.stringify({ok:true, sig, amount:DRIP, token:'BIG', network:'BIG Chain standalone ledger'}));
