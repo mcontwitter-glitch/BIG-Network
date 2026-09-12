@@ -77,9 +77,12 @@ function revealPhrase(pubB58) {
 async function balances(conn, MINT, address) {
   const pub = new PublicKey(address);
   const sol = await conn.getBalance(pub, 'confirmed');
-  const accs = await conn._rpcRequest('getTokenAccountsByOwner', [pub.toBase58(), { mint: MINT.toBase58() }, { encoding: 'jsonParsed' }]);
+  const raw = await conn._rpcRequest('getTokenAccountsByOwner', [pub.toBase58(), { mint: MINT.toBase58() }, { encoding: 'jsonParsed' }]);
+  // _rpcRequest returns the full JSON-RPC body in this web3.js version ({result:{value:[...]}}) —
+  // reading .value directly always returned undefined => balances read as 0. Handle both shapes.
+  const accs = (raw.result && raw.result.value) || raw.value || [];
   let big = 0;
-  (accs.value || []).forEach(a => { big += Number(a.account.data.parsed.info.tokenAmount.uiAmount || 0); });
+  accs.forEach(a => { big += Number(a.account.data.parsed.info.tokenAmount.uiAmount || 0); });
   return { address: pub.toBase58(), sol: sol / LAMPORTS_PER_SOL, big, custodial: walletExists(pub.toBase58()) };
 }
 

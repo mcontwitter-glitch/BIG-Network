@@ -73,9 +73,10 @@ http.createServer(async (req, res) => {
 
         // spam guard: refuse if already holding >= DRIP
         // web3.js Buffer-validation bug with mint filter + jsonParsed — use raw RPC JSON instead
-        const accs = await conn._rpcRequest('getTokenAccountsByOwner', [dest.toBase58(), { mint: MINT.toBase58() }, { encoding: 'jsonParsed' }]);
+        const raw = await conn._rpcRequest('getTokenAccountsByOwner', [dest.toBase58(), { mint: MINT.toBase58() }, { encoding: 'jsonParsed' }]);
+        const accs = (raw.result && raw.result.value) || raw.value || [];
         let held = 0;
-        (accs.value||[]).forEach(a => held += Number(a.account.data.parsed.info.tokenAmount.uiAmount || 0));
+        accs.forEach(a => held += Number(a.account.data.parsed.info.tokenAmount.uiAmount || 0));
         if (held >= DRIP) { res.writeHead(429); return res.end(JSON.stringify({ok:false, error:'You already hold ' + held + ' $BIG — one claim at a time, whale.'})); }
 
         // manual ATA path — the spl-token getOrCreate wrapper throws TokenAccountNotFoundError on fresh accounts
