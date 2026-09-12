@@ -51,7 +51,7 @@ async function main() {
   const mintInfo = await conn.getAccountInfo(mintPub);
   if (!mintInfo) {
     console.log('MINT account not on this chain — creating on-chain (existing key)');
-    await createMint(conn, treasury, mintPub, treasury.publicKey, treasury.publicKey, 9, km);
+    await createMint(conn, treasury, treasury.publicKey, treasury.publicKey, 9, km);
   }
 
   // 4) genesis supply -> treasury ATA: 404,000,000 BIG
