@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIGscan — BIG Chain Explorer</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0b0e14; color:#e8eaf0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100vh; padding:24px 12px; }
+  .wrap { width:100%; max-width:760px; margin:0 auto; }
+  .top { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
+  .brand { font-size:24px; font-weight:800; color:#e8eaf0; }
+  .brand span { color:#f5a623; }
+  .brand small { display:block; font-size:11px; color:#8a93a6; font-weight:400; letter-spacing:2px; text-transform:uppercase; }
+  .searchbar { display:flex; gap:8px; margin-bottom:20px; }
+  .searchbar input { flex:1; padding:13px 16px; background:#141926; border:1px solid #2a3450; border-radius:10px; color:#e8eaf0; font-size:14px; font-family:monospace; outline:none; }
+  .searchbar input:focus { border-color:#f5a623; }
+  .searchbar button { padding:13px 22px; background:#f5a623; border:none; border-radius:10px; color:#0b0e14; font-weight:700; font-size:14px; cursor:pointer; }
+  .searchbar button:hover { background:#ffc14d; }
+  .card { background:#141926; border:1px solid #232b3d; border-radius:14px; padding:20px; margin-bottom:14px; }
+  .card h3 { font-size:14px; color:#f5a623; text-transform:uppercase; letter-spacing:1px; margin-bottom:14px; }
+  .row { display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid #1c2436; font-size:13px; flex-wrap:wrap; }
+  .row:last-child { border-bottom:none; }
+  .row .k { color:#8a93a6; }
+  .row .v { font-family:monospace; word-break:break-all; text-align:right; }
+  .row .v a { color:#e8eaf0; text-decoration:none; border-bottom:1px dashed #f5a623; }
+  .badges { margin-left:6px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:700; letter-spacing:.5px; margin-left:6px; vertical-align:middle; }
+  .badge.gold { background:#2a1f05; color:#f5a623; border:1px solid #f5a62333; }
+  .badge.green { background:#0f2416; color:#7ede96; border:1px solid #1e5c2e; }
+  .badge.red { background:#2a1010; color:#ed7e7e; border:1px solid #5c1e1e; }
+  .tx { padding:12px 0; border-bottom:1px solid #1c2436; }
+  .tx:last-child { border-bottom:none; }
+  .tx .l1 { display:flex; justify-content:space-between; gap:8px; font-size:12px; color:#8a93a6; margin-bottom:5px; flex-wrap:wrap; }
+  .tx .l1 a { color:#f5a623; text-decoration:none; font-family:monospace; font-size:12px; }
+  .tx .l2 { font-size:14px; }
+  .tx .l2 .from, .tx .l2 .to { font-family:monospace; font-size:12px; color:#8a93a6; text-decoration:none; }
+  .tx .l2 .to { color:#7ede96; }
+  .tx .l2 .to:hover, .tx .l2 .from:hover { color:#f5a623; }
+  .amt { color:#f5a623; font-weight:700; font-family:monospace; }
+  .amt.sol { color:#7eb8ed; }
+  .empty { color:#8a93a6; font-size:13px; padding:16px 0; text-align:center; }
+  .homegrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:14px; }
+  .tile { background:#141926; border:1px solid #232b3d; border-radius:12px; padding:16px; text-align:center; }
+  .tile .v { font-size:20px; font-weight:700; color:#f5a623; }
+  .tile .k { font-size:11px; color:#8a93a6; text-transform:uppercase; letter-spacing:1px; margin-top:4px; }
+  .navlinks { text-align:center; margin-top:18px; }
+  .navlinks a { color:#8a93a6; font-size:13px; text-decoration:none; margin:0 10px; }
+  .navlinks a:hover { color:#f5a623; }
+  .loading { color:#8a93a6; text-align:center; padding:24px; font-size:13px; }
+  .note { font-size:11px; color:#5c637a; margin-top:10px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">BIG<span>scan</span><small>BIG Chain Explorer</small></div>
+  </div>
+  <div class="searchbar">
+    <input id="q" placeholder="Search address / transaction signature" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter')go()">
+    <button onclick="go()">Search</button>
+  </div>
+  <div id="view"><div class="loading">Loading latest activity…</div></div>
+  <div class="navlinks"><a href="/">🚰 Faucet</a><a href="/scan">Home</a></div>
+</div>
+
+<script>
+const MINT = 'DmQD1wHq2mi2Q6cLzKLbosxGJaqp9QS9qobL5Ge8XaAz';
+const TREASURY = 'EDFVCNL97RUij6fMjpUGCtnY7A3k4ZKtsh6tJWqEnDCA';
+function esc(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function short(a){ a=String(a); return a.length>14 ? a.slice(0,6)+'…'+a.slice(-6) : a; }
+function timeago(ts){ if(!ts) return '—'; const s=(Date.now()/1000-ts); if(s<60)return Math.floor(s)+'s ago'; if(s<3600)return Math.floor(s/60)+'m ago'; if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago'; }
+function fmt(n,d){ return Number(n||0).toLocaleString('en-US',{maximumFractionDigits:d===undefined?4:d}); }
+function isAddr(s){ return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(s); }
+function isSig(s){ return /^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(s) && s.length>=64; }
+
+function link(addr, cls){ return '<a class="'+cls+'" href="/scan?address='+addr+'">'+esc(short(addr))+'</a>'; }
+
+async function j(url, opts){ const r = await fetch(url, opts); return r.json(); }
+
+async function go(){
+  const q = document.getElementById('q').value.trim();
+  if(!q){ home(); return; }
+  if(isSig(q) && !isAddr(q)) txView(q);
+  else if(isAddr(q)) addrView(q);
+  else document.getElementById('view').innerHTML = '<div class="empty">Not a valid BIG address or signature.</div>';
+}
+
+async function home(){
+  document.getElementById('view').innerHTML = '<div class="loading">Loading latest activity…</div>';
+  const [stats, recent] = await Promise.all([ j('/stats').catch(()=>null), j('/api/recent?limit=15').catch(()=>null) ]);
+  let h = '<div class="homegrid">'+
+    '<div class="tile"><div class="v">'+(stats?fmt(stats.supply):'—')+'</div><div class="k">$BIG Supply</div></div>'+
+    '<div class="tile"><div class="v">#'+(stats?stats.slot:'—')+'</div><div class="k">Slot</div></div>'+
+    '<div class="tile"><div class="v">'+(recent&&recent.transactions?recent.transactions.filter(t=>!t.err).length:'—')+'</div><div class="k">Recent OK txs</div></div>'+
+    '</div>';
+  h += '<div class="card"><h3>📡 Latest $BIG Activity</h3>';
+  if(recent && recent.transactions && recent.transactions.length){
+    h += recent.transactions.map(t=>txRow(t)).join('');
+  } else h += '<div class="empty">No token activity yet — <a href="/" style="color:#f5a623">claim from the faucet</a> to make the first one.</div>';
+  h += '</div>';
+  h += '<div class="note">Home feed shows the latest $BIG token transactions (faucet drips, genesis, transfers). Search any address or signature for full detail.</div>';
+  document.getElementById('view').innerHTML = h;
+}
+
+function txRow(t){
+  let body = '<span class="amt">'+esc(t.kind==='GENESIS'?'GENESIS MINT':'+'+fmt(t.amount)+' $BIG')+'</span> ';
+  if(t.kind==='GENESIS') body += '';
+  else body += link(t.from,'from')+' → '+link(t.to,'to');
+  return '<div class="tx"><div class="l1"><a href="/scan?tx='+t.sig+'">'+esc(short(t.sig))+'</a><span>Slot #'+t.slot+' · '+esc(timeago(t.blockTime))+'</span></div><div class="l2">'+body+'</div></div>';
+}
+
+async function txView(sig){
+  document.getElementById('view').innerHTML = '<div class="loading">Fetching transaction…</div>';
+  const t = await j('/api/tx?sig='+encodeURIComponent(sig)).catch(()=>null);
+  if(!t || t.error){ document.getElementById('view').innerHTML='<div class="empty">Transaction not found on this chain.</div>'; return; }
+  let h = '<div class="card"><h3>🧾 Transaction</h3>';
+  h += row('Signature','<span class="v">'+esc(t.sig)+'</span>');
+  h += row('Status', t.err ? '<span class="badge red">FAILED</span>' : '<span class="badge green">SUCCESS</span>');
+  h += row('Slot', '#'+t.slot);
+  h += row('Time', esc(new Date((t.blockTime||0)*1000).toLocaleString())+' ('+esc(timeago(t.blockTime))+')');
+  h += row('Fee', fmt(t.fee/LAMPORTS, 9)+' SOL');
+  if(t.tokenTransfers && t.tokenTransfers.length){
+    t.tokenTransfers.forEach(x=>{
+      h += row('$BIG Transfer', link(x.from,'')+' → '+link(x.to,'')+' <span class="amt">'+fmt(x.amount)+' $BIG</span>');
+    });
+  }
+  if(t.solTransfers && t.solTransfers.length){
+    t.solTransfers.forEach(x=>{
+      h += row('SOL Transfer', link(x.from,'')+' → '+link(x.to,'')+' <span class="amt sol">'+fmt(x.amount)+' SOL</span>');
+    });
+  }
+  if(t.isGenesis) h += '<div class="row"><span class="k">Note</span><span class="v">Genesis mint — treasury funded with the full 404,000,000 $BIG supply</span></div>';
+  h += '</div>';
+  document.getElementById('view').innerHTML = h;
+}
+
+async function addrView(addr){
+  document.getElementById('view').innerHTML = '<div class="loading">Fetching account…</div>';
+  const [b, txs] = await Promise.all([ j('/api/address?address='+encodeURIComponent(addr)).catch(()=>null), j('/api/address?address='+encodeURIComponent(addr)+'&txs=1').catch(()=>null) ]);
+  if(!b || b.error){ document.getElementById('view').innerHTML='<div class="empty">Account not found.</div>'; return; }
+  let h = '<div class="card"><h3>👤 Account'+(b.custodial?'<span class="badge gold">BIG CUSTODIAL</span>':'')+(addr===TREASURY?'<span class="badge gold">TREASURY</span>':'')+'</h3>';
+  h += row('Address','<span class="v">'+esc(b.address)+'</span>');
+  h += row('$BIG Balance','<span class="v amt">'+fmt(b.big)+' $BIG</span>');
+  h += row('SOL Balance','<span class="v amt sol">'+fmt(b.sol)+' SOL</span>');
+  h += row('Custodial', b.custodial ? '<span class="badge gold">YES — keys on BIG ledger</span>' : '<span class="badge">NO — external wallet</span>');
+  h += '</div>';
+  h += '<div class="card"><h3>📜 Recent Activity</h3>';
+  if(txs && txs.transactions && txs.transactions.length){
+    h += txs.transactions.map(t=>{
+      let body;
+      if(t.tokenTransfers && t.tokenTransfers.length){
+        const x = t.tokenTransfers[0];
+        const dir = x.to===addr ? '+' : '−';
+        body = '<span class="amt">'+dir+fmt(x.amount)+' $BIG</span> '+link(x.from,'from')+' → '+link(x.to,'to');
+      } else if(t.solTransfers && t.solTransfers.length){
+        const x = t.solTransfers[0];
+        const dir = x.to===addr ? '+' : '−';
+        body = '<span class="amt sol">'+dir+fmt(x.amount)+' SOL</span> '+link(x.from,'from')+' → '+link(x.to,'to');
+      } else body = '<span class="amt">account update</span>';
+      return '<div class="tx"><div class="l1"><a href="/scan?tx='+t.sig+'">'+esc(short(t.sig))+'</a><span>Slot #'+t.slot+' · '+esc(timeago(t.blockTime))+'</span></div><div class="l2">'+body+'</div></div>';
+    }).join('');
+  } else h += '<div class="empty">No activity for this account yet.</div>';
+  h += '</div>';
+  h += '<div class="navlinks"><a href="/scan">← Back to feed</a></div>';
+  document.getElementById('view').innerHTML = h;
+}
+
+function row(k,v){ return '<div class="row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'; }
+const LAMPORTS = 1e9;
+
+const params = new URLSearchParams(location.search);
+if(params.get('tx')) { txView(params.get('tx')); }
+else if(params.get('address')) { addrView(params.get('address')); document.getElementById('q').value = params.get('address'); }
+else home();
+</script>
+</body>
+</html>

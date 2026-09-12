@@ -4,6 +4,7 @@ const http = require('http');
 const { Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction, LAMPORTS_PER_SOL } = require('@solana/web3.js');
 const splToken = require('@solana/spl-token');
 const fs = require('fs');
+const path = require('path');
 const wallet = require('./wallet');
 
 const VAL = 'http://127.0.0.1:8899';
@@ -18,6 +19,51 @@ function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+
+// ===== BIGscan transaction parser =====
+// _rpcRequest returns the FULL JSON-RPC body in this web3.js version — unwrap both shapes.
+async function rpc(method, params) {
+  const raw = await conn._rpcRequest(method, params);
+  if (raw && raw.result !== undefined) return raw.result;
+  return raw;
+}
+
+const TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+
+async function parseTx(sig) {
+  const t = await rpc('getTransaction', [sig, { maxSupportedTransactionVersion: 0, encoding: 'json' }]);
+  if (!t) return null;
+  const out = { sig, slot: t.slot, blockTime: t.blockTime, err: t.meta.err, fee: t.meta.fee, tokenTransfers: [], solTransfers: [] };
+  const pre = {}, post = {};
+  (t.meta.preTokenBalances || []).forEach(b => { pre[b.accountIndex] = { owner: b.owner, ui: Number(b.uiTokenAmount.uiAmount || 0) }; });
+  (t.meta.postTokenBalances || []).forEach(b => { post[b.accountIndex] = { owner: b.owner, ui: Number(b.uiTokenAmount.uiAmount || 0) }; });
+  const decs = [], incs = [];
+  Object.keys(post).forEach(i => {
+    i = Number(i);
+    const p = pre[i], q = post[i];
+    const d = (q.ui || 0) - (p ? (p.ui || 0) : 0);
+    if (d < 0) decs.push({ owner: q.owner, d: -d });
+    if (d > 0) incs.push({ owner: q.owner, d });
+  });
+  if (incs.length && decs.length) {
+    out.kind = 'TRANSFER'; out.from = decs[0].owner; out.to = incs[0].owner; out.amount = incs[0].d;
+    out.tokenTransfers.push({ from: decs[0].owner, to: incs[0].owner, amount: incs[0].d });
+  } else if (incs.length && !decs.length) {
+    out.kind = 'GENESIS'; out.from = 'GENESIS'; out.to = incs[0].owner; out.amount = incs[0].d;
+    out.tokenTransfers.push({ from: 'GENESIS', to: incs[0].owner, amount: incs[0].d });
+  } else if (decs.length) {
+    out.kind = 'BURN'; out.from = decs[0].owner; out.to = 'BURN'; out.amount = decs[0].d;
+    out.tokenTransfers.push({ from: decs[0].owner, to: 'BURN', amount: decs[0].d });
+  } else { out.kind = 'OTHER'; out.amount = 0; }
+  const keys = (t.transaction.message.accountKeys || []).map(k => (typeof k === 'string' ? k : k.toBase58()));
+  const deltas = keys.map((k, i) => ({ k, d: (t.meta.postBalances[i] || 0) - (t.meta.preBalances[i] || 0) })).filter(x => Math.abs(x.d) > 5000 && x.k !== TOKEN_PROGRAM);
+  const dec = deltas.filter(x => x.d < 0).sort((a, b) => a.d - b.d)[0];
+  const inc = deltas.filter(x => x.d > 0).sort((a, b) => b.d - a.d)[0];
+  if (inc && dec) out.solTransfers.push({ from: dec.k, to: inc.k, amount: inc.d / LAMPORTS_PER_SOL });
+  else if (inc) out.solTransfers.push({ from: 'Network Airdrop', to: inc.k, amount: inc.d / LAMPORTS_PER_SOL });
+  return out;
 }
 
 http.createServer(async (req, res) => {
@@ -51,6 +97,63 @@ http.createServer(async (req, res) => {
         supply: supply.value.uiAmount, token: 'BIG', network: 'standalone-ledger'
       }));
     } catch(e) { res.writeHead(502); res.end(JSON.stringify({error:'stats failed'})); }
+    return;
+  }
+
+
+  // ===== FAUCET CLAIM PAGE + BIGSCAN =====
+  if (req.url === '/' || req.url === '/index.html' || req.url === '/scan' || req.url === '/scan/') {
+    const page = req.url.startsWith('/scan') ? 'scan.html' : 'index.html';
+    fs.readFile(path.join(__dirname, 'public', page), (e, d) => {
+      if (e) { res.writeHead(500); return res.end('page missing'); }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(d);
+    });
+    return;
+  }
+
+  if (req.url.startsWith('/api/recent')) {
+    const limit = Math.min(Number(new URL(req.url, 'http://big').searchParams.get('limit') || 15) || 15, 25);
+    (async () => {
+      try {
+        const sigs = (await rpc('getSignaturesForAddress', [MINT.toBase58(), { limit }])) || [];
+        const txs = [];
+        for (const s of sigs) { const t = await parseTx(s.sig); if (t) txs.push(t); }
+        res.writeHead(200); res.end(JSON.stringify({ ok: true, count: txs.length, transactions: txs }));
+      } catch (e) { res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message })); }
+    })();
+    return;
+  }
+
+  if (req.url.startsWith('/api/tx')) {
+    const sig = new URL(req.url, 'http://big').searchParams.get('sig');
+    (async () => {
+      try {
+        const t = await parseTx(sig);
+        if (!t) { res.writeHead(404); return res.end(JSON.stringify({ ok: false, error: 'Transaction not found on this chain.' })); }
+        res.writeHead(200); res.end(JSON.stringify(Object.assign({ ok: true }, t)));
+      } catch (e) { res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message })); }
+    })();
+    return;
+  }
+
+  if (req.url.startsWith('/api/address')) {
+    const u = new URL(req.url, 'http://big');
+    const address = u.searchParams.get('address');
+    const wantTxs = u.searchParams.get('txs') === '1';
+    (async () => {
+      try {
+        const b = await wallet.balances(conn, MINT, address);
+        const out = { ok: true, address: b.address, sol: b.sol, big: b.big, custodial: b.custodial };
+        if (wantTxs) {
+          const sigs = (await rpc('getSignaturesForAddress', [b.address, { limit: 20 }])) || [];
+          const txs = [];
+          for (const s of sigs) { const t = await parseTx(s.sig); if (t) txs.push(t); }
+          out.transactions = txs;
+        }
+        res.writeHead(200); res.end(JSON.stringify(out));
+      } catch (e) { res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message })); }
+    })();
     return;
   }
 
@@ -178,5 +281,5 @@ http.createServer(async (req, res) => {
     return;
   }
 
-  res.writeHead(404); res.end(JSON.stringify({error:'BIG Chain gateway — use /rpc, /drip, /stats, /wallet/create, /wallet/balance, /wallet/phrase, /wallet/send, /wallet/list'}));
+  res.writeHead(404); res.end(JSON.stringify({error:'BIG Chain gateway — use / (faucet), /scan (explorer), /rpc, /drip, /stats, /api/tx, /api/address, /api/recent, /wallet/create, /wallet/balance, /wallet/phrase, /wallet/send, /wallet/list'}));
 }).listen(9090, '0.0.0.0', () => console.log('gateway on 9090'));

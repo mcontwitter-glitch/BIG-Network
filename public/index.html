@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIG Chain — Faucet</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0b0e14; color:#e8eaf0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:32px 16px; }
+  .wrap { width:100%; max-width:480px; }
+  .logo { text-align:center; margin-bottom:8px; }
+  .logo .big { font-size:44px; font-weight:800; color:#f5a623; letter-spacing:-1px; }
+  .logo .chain { font-size:16px; color:#8a93a6; letter-spacing:6px; text-transform:uppercase; margin-top:2px; }
+  .tagline { text-align:center; color:#8a93a6; font-size:14px; margin-bottom:28px; }
+  .card { background:#141926; border:1px solid #232b3d; border-radius:14px; padding:24px; margin-bottom:16px; }
+  .card h2 { font-size:15px; color:#f5a623; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; }
+  input[type=text] { width:100%; padding:14px; background:#0b0e14; border:1px solid #2a3450; border-radius:10px; color:#e8eaf0; font-size:14px; font-family:monospace; outline:none; }
+  input[type=text]:focus { border-color:#f5a623; }
+  .btn { width:100%; margin-top:12px; padding:14px; background:#f5a623; border:none; border-radius:10px; color:#0b0e14; font-size:16px; font-weight:700; cursor:pointer; transition:background .15s; }
+  .btn:hover:not(:disabled) { background:#ffc14d; }
+  .btn:disabled { opacity:.5; cursor:wait; }
+  .btn.ghost { background:transparent; border:1px solid #2a3450; color:#8a93a6; font-weight:500; font-size:14px; }
+  .btn.ghost:hover { border-color:#f5a623; color:#f5a623; background:transparent; }
+  .msg { margin-top:14px; padding:14px; border-radius:10px; font-size:14px; line-height:1.5; word-break:break-all; display:none; }
+  .msg.ok { display:block; background:#0f2416; border:1px solid #1e5c2e; color:#7ede96; }
+  .msg.err { display:block; background:#2a1010; border:1px solid #5c1e1e; color:#ed7e7e; }
+  .msg a { color:#f5a623; text-decoration:none; border-bottom:1px dashed #f5a623; }
+  .stats { display:flex; gap:12px; margin-bottom:16px; }
+  .stat { flex:1; background:#141926; border:1px solid #232b3d; border-radius:12px; padding:14px; text-align:center; }
+  .stat .v { font-size:18px; font-weight:700; color:#e8eaf0; }
+  .stat .k { font-size:11px; color:#8a93a6; text-transform:uppercase; letter-spacing:1px; margin-top:4px; }
+  .foot { text-align:center; margin-top:24px; }
+  .foot a { color:#8a93a6; font-size:14px; text-decoration:none; margin:0 10px; }
+  .foot a:hover { color:#f5a623; }
+  .phrase { font-family:monospace; font-size:13px; background:#0b0e14; border:1px solid #2a3450; border-radius:8px; padding:12px; color:#f5a623; word-spacing:6px; line-height:1.7; margin:8px 0; user-select:all; }
+  .warn { font-size:12px; color:#ed9c3c; margin-top:8px; line-height:1.5; }
+  .copyrow { display:flex; gap:8px; align-items:center; margin-top:6px; }
+  .addr { font-family:monospace; font-size:12px; color:#7ede96; word-break:break-all; flex:1; user-select:all; }
+  .mini { padding:6px 12px; font-size:11px; background:#1c2436; border:1px solid #2a3450; border-radius:6px; color:#8a93a6; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo"><div class="big">BIG</div><div class="chain">Chain</div></div>
+  <p class="tagline">The standalone ledger. Claim your $BIG.</p>
+
+  <div class="stats">
+    <div class="stat"><div class="v" id="supply">—</div><div class="k">Supply</div></div>
+    <div class="stat"><div class="v" id="slot">—</div><div class="k">Slot</div></div>
+  </div>
+
+  <div class="card">
+    <h2>🚰 Faucet</h2>
+    <input type="text" id="addr" placeholder="Paste your BIG / Solana address" autocomplete="off" spellcheck="false">
+    <button class="btn" id="claim" onclick="claim()">Claim 100 $BIG</button>
+    <div class="msg" id="msg"></div>
+    <p class="warn" id="rules" style="display:none">5-minute cooldown per address · bonus 1 SOL for fees · works with any standard Solana wallet (Phantom, Solflare, Backpack)</p>
+  </div>
+
+  <div class="card">
+    <h2>🆕 No wallet yet?</h2>
+    <button class="btn ghost" id="create" onclick="createWallet()">Create a BIG custodial wallet</button>
+    <div class="msg" id="wmsg"></div>
+  </div>
+
+  <div class="foot">
+    <a href="/scan">🔎 BIGscan</a><a href="/stats">Stats</a>
+  </div>
+</div>
+
+<script>
+fetch('/stats').then(r=>r.json()).then(s=>{
+  document.getElementById('supply').textContent = (s.supply/1e6).toFixed(1)+'M';
+  document.getElementById('slot').textContent = '#'+s.slot;
+}).catch(()=>{});
+document.getElementById('rules').style.display='block';
+
+function el(id){ return document.getElementById(id); }
+function show(id, ok, html){ const m=el(id); m.className='msg '+(ok?'ok':'err'); m.innerHTML=html; }
+
+async function claim(){
+  const addr = el('addr').value.trim();
+  const b = el('claim');
+  if(!addr){ show('msg', false, 'Paste an address first.'); return; }
+  b.disabled = true; b.textContent = 'Claiming…';
+  try{
+    const r = await fetch('/drip', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({address:addr})});
+    const d = await r.json();
+    if(d.ok){
+      show('msg', true, '✅ <b>'+d.amount+' $BIG</b> claimed + 1 SOL for fees.<br><a href="/scan?tx='+d.sig+'">View on BIGscan →</a>');
+    } else { show('msg', false, '⚠️ '+(d.error||'Claim failed.')); }
+  }catch(e){ show('msg', false, 'Network error — try again.'); }
+  b.disabled = false; b.textContent = 'Claim 100 $BIG';
+}
+
+async function createWallet(){
+  const b = el('create');
+  b.disabled = true; b.textContent = 'Creating…';
+  try{
+    const r = await fetch('/wallet/create', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    const d = await r.json();
+    if(d.ok){
+      show('wmsg', true, '✅ Wallet created.<div class="copyrow"><span class="addr" id="newaddr">'+d.address+'</span></div>'+
+        '<div class="phrase" id="newphrase">'+d.phrase+'</div>'+
+        '<p class="warn">⚠️ Write this 12-word phrase down and keep it private — it\'s the ONLY way to import this wallet into Phantom/Solflare. Keys are held on the BIG ledger.</p>'+
+        '<div class="copyrow"><button class="mini" onclick="copyTxt(\'newphrase\')">Copy phrase</button><button class="mini" onclick="copyTxt(\'newaddr\')">Copy address</button></div>');
+      el('addr').value = d.address;
+    } else { show('wmsg', false, '⚠️ '+(d.error||'Creation failed.')); }
+  }catch(e){ show('wmsg', false, 'Network error — try again.'); }
+  b.disabled = false; b.textContent = 'Create a BIG custodial wallet';
+}
+
+function copyTxt(id){ const t=document.getElementById(id).textContent; navigator.clipboard.writeText(t).then(()=>{}); }
+</script>
+</body>
+</html>
