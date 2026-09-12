@@ -116,7 +116,17 @@ http.createServer(async (req, res) => {
     const limit = Math.min(Number(new URL(req.url, 'http://big').searchParams.get('limit') || 15) || 15, 25);
     (async () => {
       try {
-        const sigs = (await rpc('getSignaturesForAddress', [MINT.toBase58(), { limit, commitment: 'confirmed' }])) || [];
+        // merge mint + treasury-owner indexes: agave's spl-token-mint index can skip plain
+        // transfers, but every drip touches the treasury, so the union covers all activity
+        const [mintSigs, trSigs] = await Promise.all([
+          rpc('getSignaturesForAddress', [MINT.toBase58(), { limit: limit * 2, commitment: 'confirmed' }]),
+          rpc('getSignaturesForAddress', [TREASURY.publicKey.toBase58(), { limit: limit * 2, commitment: 'confirmed' }]),
+        ]);
+        const seen = new Set();
+        const sigs = [...(mintSigs || []), ...(trSigs || [])]
+          .filter(s => { const k = s.signature || s.sig; if (seen.has(k)) return false; seen.add(k); return true; })
+          .sort((a, b) => (b.slot || 0) - (a.slot || 0))
+          .slice(0, limit);
         const txs = [];
         for (const s of sigs) { const t = await parseTx(s.signature || s.sig); if (t) txs.push(t); }
         res.writeHead(200); res.end(JSON.stringify({ ok: true, count: txs.length, transactions: txs }));
