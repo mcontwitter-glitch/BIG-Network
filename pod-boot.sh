@@ -34,12 +34,20 @@ npm install --no-audit --no-fund
 # 4) agave v2.1.21 (tarball cached on volume, integrity-checked)
 if [ ! -x /usr/local/bin/solana-test-validator ]; then
   if [ ! -f /workspace/bigchain/solana-release.tar.bz2 ] || ! tar -tjf /workspace/bigchain/solana-release.tar.bz2 >/dev/null 2>&1; then
-    echo "agave tarball missing or corrupt — downloading fresh"
+    echo "agave tarball missing or corrupt — downloading fresh (resumable loop)"
     rm -f /workspace/bigchain/solana-release.tar.bz2
-    # fast CDN mirror first (uploaded by BIGagent404), fall back to GitHub
-    curl -fsSL --max-time 600 -o /workspace/bigchain/solana-release.tar.bz2 "https://base44.app/api/apps/69f56986c51e35a876adf38d/files/mp/public/69f56986c51e35a876adf38d/d4262721b_agavetar.bz2" \
-      || curl -fsSL -o /workspace/bigchain/solana-release.tar.bz2 \
-      https://github.com/anza-xyz/agave/releases/download/v2.1.21/solana-release-x86_64-unknown-linux-gnu.tar.bz2
+    # downloads from this network die mid-transfer; resume until complete
+    ok=0
+    for try in $(seq 1 60); do
+      curl -fsSL -C - --max-time 600 -o /workspace/bigchain/solana-release.tar.bz2 \
+        https://github.com/anza-xyz/agave/releases/download/v2.1.21/solana-release-x86_64-unknown-linux-gnu.tar.bz2 && { ok=1; break; }
+      echo "download attempt $try incomplete ($(stat -c%s /workspace/bigchain/solana-release.tar.bz2 2>/dev/null || echo 0) bytes) — resuming"
+      sleep 3
+    done
+    [ "$ok" = 1 ] || { echo "FATAL: agave download failed after retries"; exit 1; }
+    sz=$(stat -c%s /workspace/bigchain/solana-release.tar.bz2)
+    [ "$sz" = "298782636" ] || { echo "FATAL: agave tarball size mismatch ($sz != 298782636)"; exit 1; }
+    tar -tjf /workspace/bigchain/solana-release.tar.bz2 >/dev/null 2>&1 || { echo "FATAL: downloaded tarball still corrupt"; exit 1; }
   fi
   tar -xjf /workspace/bigchain/solana-release.tar.bz2 -C /tmp || { echo "FATAL: agave extract failed"; exit 1; }
   cp /tmp/solana-release*/bin/solana-test-validator /usr/local/bin/ || { echo "FATAL: validator install failed"; exit 1; }
