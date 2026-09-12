@@ -22,9 +22,9 @@ cd /workspace/bigchain/app
 if [ ! -f /workspace/bigchain/treasury.key ]; then
   [ -z "$STATE_URL" ] && { echo "FATAL: STATE_URL not set and no keys on volume"; exit 1; }
   curl -fsSL -o /tmp/state.zip "$STATE_URL"
-  (cd /workspace/bigchain && unzip -o -j /tmp/state.zip treasury.key mint.key keys.env chain.json -d /workspace/bigchain/ && rm -f /tmp/state.zip) || true
+  (cd /workspace/bigchain && unzip -o /tmp/state.zip && rm -f /tmp/state.zip) || true
 fi
-# never boot from a restored snapshot — fresh genesis only
+# never boot from a restored snapshot — fresh genesis only (keys above survive)
 rm -rf /workspace/bigchain/ledger /tmp/solana-release*
 cp -f /workspace/bigchain/treasury.key /workspace/bigchain/mint.key /workspace/bigchain/keys.env /workspace/bigchain/chain.json /workspace/bigchain/app/ 2>/dev/null || true
 
