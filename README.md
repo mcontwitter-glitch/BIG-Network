@@ -78,3 +78,25 @@ This repository (under MC's GitHub account) is the **official and only home** of
 ## Agent Operations Grid
 
 The network dashboard lives at [agent-network.html](https://mcontwitter-glitch.github.io/BIG-Network/agent-network.html) — real agent roster, live event log, task console, and real pipeline numbers (no fake TPS).
+
+## Run a node — help the network
+
+Every node makes the BIG Network faster: wallet + BIGscan reads get served by the nearest healthy node instead of one box. One command on any fresh Ubuntu 20.04+/Debian 11+ box (or cloud pod):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mcontwitter-glitch/BIG-Network/main/install-node.sh | sudo bash
+```
+
+That installs the Agave validator, fetches the chain bundle (genesis + latest snapshot), generates a fresh node identity, and starts an **RPC replica** under systemd (`big-node`).
+
+To follow the live chain from the seed node in real time:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/mcontwitter-glitch/BIG-Network/main/install-node.sh | sudo bash -s -- --entrypoint <seed-host>:8001
+```
+
+Flags: `--mode rpc|validator` (validator needs a staking pass — contact the network team), `--dir`, `--rpc-port`.
+
+After install: check `journalctl -u big-node -f`, then **send your node's public hostname + RPC port to the network team** so wallet + BIGscan traffic routes to it.
+
+Security: this repo contains **no private keys** — node operators generate their own identity on install. Never share any keypair file with anyone, including us.
