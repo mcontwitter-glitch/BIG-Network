@@ -32,6 +32,7 @@ MODE="rpc"
 ENTRYPOINT=""
 DIR="/opt/big-chain"
 RPC_PORT="8899"
+FOREGROUND=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --entrypoint) ENTRYPOINT="${2:-}"; shift 2 ;;
@@ -42,6 +43,7 @@ while [ $# -gt 0 ]; do
     --dir=*) DIR="${1#*=}"; shift ;;
     --rpc-port) RPC_PORT="${2:-8899}"; shift 2 ;;
     --rpc-port=*) RPC_PORT="${1#*=}"; shift ;;
+    --foreground) FOREGROUND=1; shift ;;
     *) shift ;;
   esac
 done
@@ -98,11 +100,19 @@ if [ "$MODE" = "validator" ]; then
   log "starting in no-vote follower mode until then (fully syncs, serves RPC)."
 fi
 
-# ---------------------------------------------------------------- 6. systemd
+# ---------------------------------------------------------------- 6. launch
 ENTRY_ARG=""
 [ -n "$ENTRYPOINT" ] && ENTRY_ARG="--entrypoint $ENTRYPOINT"
-log "writing systemd unit..."
-cat > /etc/systemd/system/big-node.service <<EOF
+VAL_CMD="$AGAVE_BIN --ledger $DIR/ledger --identity $DIR/identity.json --rpc-port $RPC_PORT --gossip-port $GOSSIP_PORT --dynamic-port-range 8000-8020 --limit-ledger-size 100000000 --snapshot-interval-slots 200 $VOTE_ARGS $ENTRY_ARG --public-rpc"
+
+if [ "$FOREGROUND" -eq 1 ]; then
+  # container mode (Runpod/Docker - no systemd): run directly, log to file
+  log "foreground/container mode - starting validator directly..."
+  nohup $VAL_CMD > "$DIR/node.log" 2>&1 &
+  echo $! > "$DIR/node.pid"
+else
+  log "writing systemd unit..."
+  cat > /etc/systemd/system/big-node.service <<UNIT
 [Unit]
 Description=BIG Chain node (Agave)
 After=network-online.target
@@ -110,7 +120,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=$AGAVE_BIN --ledger $DIR/ledger --identity $DIR/identity.json --rpc-port $RPC_PORT --gossip-port $GOSSIP_PORT --dynamic-port-range 8000-8020 --limit-ledger-size 100000000 --snapshot-interval-slots 200 $VOTE_ARGS $ENTRY_ARG --public-rpc
+ExecStart=$VAL_CMD
 Restart=always
 RestartSec=5
 Environment=PATH=$PATH
@@ -118,12 +128,13 @@ User=root
 
 [Install]
 WantedBy=multi-user.target
-EOF
+UNIT
 
-systemctl daemon-reload
-systemctl enable big-node >/dev/null
-systemctl restart big-node
-log "node starting (systemd: big-node)..."
+  systemctl daemon-reload
+  systemctl enable big-node >/dev/null
+  systemctl restart big-node
+  log "node starting (systemd: big-node)..."
+fi
 
 # ---------------------------------------------------------------- 7. health
 log "waiting for RPC to come alive..."
@@ -140,7 +151,7 @@ log "RPC:        http://<this-host>:${RPC_PORT}"
 log "gossip:     port ${GOSSIP_PORT}"
 [ -n "$ENTRYPOINT" ] && log "entrypoint:  $ENTRYPOINT"
 [ -z "$ENTRYPOINT" ] && log "no entrypoint: serving from bundled snapshot; add --entrypoint to follow live blocks"
-log "logs:       journalctl -u big-node -f"
+if [ "$FOREGROUND" -eq 1 ]; then log "logs:       tail -f $DIR/node.log"; else log "logs:       journalctl -u big-node -f"; fi
 echo ""
 log "NEXT: send your node's public hostname + RPC port to the network team"
 log "(info@bigfoot404.biz) so wallet + BIGscan traffic can be routed to it."
