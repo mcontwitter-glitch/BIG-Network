@@ -159,7 +159,11 @@
 </div>
 
 <script>
-const GW = "https://8f2dvht9slxsi3-9090.proxy.runpod.net";
+// UI matches the BIG Network gateway serving this page:
+// opened from any node's gateway -> that node's origin; opened as a file -> live seed fallback
+const GW = (typeof location !== "undefined" && location.protocol.indexOf("http") === 0)
+  ? location.origin
+  : "https://8f2dvht9slxsi3-9090.proxy.runpod.net";
 const $ = id => document.getElementById(id);
 const setOut = (el, msg, cls) => { el.textContent = (typeof msg === 'string') ? msg : JSON.stringify(msg, null, 2); el.className = 'out ' + (cls || ''); };
 

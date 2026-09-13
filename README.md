@@ -79,6 +79,23 @@ This repository (under MC's GitHub account) is the **official and only home** of
 
 The network dashboard lives at [agent-network.html](https://mcontwitter-glitch.github.io/BIG-Network/agent-network.html) — real agent roster, live event log, task console, and real pipeline numbers (no fake TPS).
 
+### Live seed tracking (default)
+
+Every install now tracks the live seed automatically: the node polls the seed
+gateway's /stats every 10 minutes and, when it falls behind, refreshes its
+ledger state from the seed's /snapshot endpoint — no direct gossip needed,
+so it works through Runpod/Docker HTTP proxies.
+
+- Disable: `--seed off`
+- Real-time gossip instead (seed must expose a direct TCP/UDP port): `--entrypoint host:8001`
+
+### BIGscan transaction history
+
+The gateway now archives every parsed transaction to `tx-archive.jsonl`
+(on the pod volume — survives restarts). Recent/address/tx lookups serve the
+union of live RPC + archive, and `/api/history?address=...` returns the full
+saved history for any address.
+
 ## Run a node — help the network
 
 Every node makes the BIG Network faster: wallet + BIGscan reads get served by the nearest healthy node instead of one box. One command on any fresh Ubuntu 20.04+/Debian 11+ box (or cloud pod):

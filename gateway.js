@@ -5,6 +5,8 @@ const { Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction, 
 const splToken = require('@solana/spl-token');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
+const { exec } = require('child_process');
 const wallet = require('./wallet');
 
 const VAL = 'http://127.0.0.1:8899';
@@ -64,6 +66,46 @@ async function parseTx(sig) {
   if (inc && dec) out.solTransfers.push({ from: dec.k, to: inc.k, amount: inc.d / LAMPORTS_PER_SOL });
   else if (inc) out.solTransfers.push({ from: 'Network Airdrop', to: inc.k, amount: inc.d / LAMPORTS_PER_SOL });
   return out;
+}
+
+// ===== BIGscan TX ARCHIVE (persistence) =====
+// Live RPC only serves a recent-signature window — transactions used to fall
+// out of it and vanish from BIGscan. Every parsed tx is now upserted here
+// (append-only JSONL, survives gateway restarts on the pod volume) and served
+// as a union with live data, so history stays lookup-able forever.
+const ARCHIVE_PATH = process.env.TX_ARCHIVE || path.join(__dirname, 'tx-archive.jsonl');
+const archive = new Map(); // sig -> parsed tx
+try {
+  for (const line of fs.readFileSync(ARCHIVE_PATH, 'utf8').split('\n')) {
+    if (!line.trim()) continue;
+    try { const t = JSON.parse(line); if (t && t.sig) archive.set(t.sig, t); } catch {}
+  }
+  console.log('[archive] loaded ' + archive.size + ' saved transactions');
+} catch (e) { console.log('[archive] starting fresh (no saved transactions yet)'); }
+
+function saveTx(t) {
+  if (!t || !t.sig || archive.has(t.sig)) return;
+  archive.set(t.sig, t);
+  try { fs.appendFileSync(ARCHIVE_PATH, JSON.stringify(t) + '\n'); }
+  catch (e) { console.error('[archive] write failed: ' + e.message); }
+}
+
+function mergeTxs(live, archived) {
+  const seen = new Set(); const out = [];
+  for (const t of [...live, ...archived]) {
+    if (!t || seen.has(t.sig)) continue; seen.add(t.sig); out.push(t);
+  }
+  return out.sort((a, b) => (b.slot || 0) - (a.slot || 0));
+}
+
+function txsForAddress(addr) {
+  const out = [];
+  for (const t of archive.values()) {
+    if (t.from === addr || t.to === addr ||
+        (t.tokenTransfers || []).some(x => (x.from === addr || x.to === addr)) ||
+        (t.solTransfers || []).some(x => (x.from === addr || x.to === addr))) out.push(t);
+  }
+  return out.sort((a, b) => (b.slot || 0) - (a.slot || 0));
 }
 
 http.createServer(async (req, res) => {
@@ -128,8 +170,9 @@ http.createServer(async (req, res) => {
           .sort((a, b) => (b.slot || 0) - (a.slot || 0))
           .slice(0, limit);
         const txs = [];
-        for (const s of sigs) { const t = await parseTx(s.signature || s.sig); if (t) txs.push(t); }
-        res.writeHead(200); res.end(JSON.stringify({ ok: true, count: txs.length, transactions: txs }));
+        for (const s of sigs) { const t = await parseTx(s.signature || s.sig); if (t) txs.push(t); saveTx(t); }
+        const merged = mergeTxs(txs, [...archive.values()]).slice(0, limit * 2);
+        res.writeHead(200); res.end(JSON.stringify({ ok: true, count: merged.length, archived: archive.size, transactions: merged }));
       } catch (e) { res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message })); }
     })();
     return;
@@ -140,8 +183,10 @@ http.createServer(async (req, res) => {
     (async () => {
       try {
         const t = await parseTx(sig);
-        if (!t) { res.writeHead(404); return res.end(JSON.stringify({ ok: false, error: 'Transaction not found on this chain.' })); }
-        res.writeHead(200); res.end(JSON.stringify(Object.assign({ ok: true }, t)));
+        if (t) { saveTx(t); res.writeHead(200); return res.end(JSON.stringify(Object.assign({ ok: true }, t))); }
+        const a = archive.get(sig);
+        if (a) { res.writeHead(200); return res.end(JSON.stringify(Object.assign({ ok: true, archived: true }, a))); }
+        res.writeHead(404); res.end(JSON.stringify({ ok: false, error: 'Transaction not found on this chain.' }));
       } catch (e) { res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message })); }
     })();
     return;
@@ -158,11 +203,58 @@ http.createServer(async (req, res) => {
         if (wantTxs) {
           const sigs = (await rpc('getSignaturesForAddress', [b.address, { limit: 20, commitment: 'confirmed' }])) || [];
           const txs = [];
-          for (const s of sigs) { const t = await parseTx(s.signature || s.sig); if (t) txs.push(t); }
-          out.transactions = txs;
+          for (const s of sigs) { const t = await parseTx(s.signature || s.sig); if (t) txs.push(t); saveTx(t); }
+          out.transactions = mergeTxs(txs, txsForAddress(b.address)).slice(0, 40);
+          out.archived = txsForAddress(b.address).length;
         }
         res.writeHead(200); res.end(JSON.stringify(out));
       } catch (e) { res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message })); }
+    })();
+    return;
+  }
+
+  if (req.url.startsWith('/api/history')) {
+    const address = new URL(req.url, 'http://big').searchParams.get('address');
+    const txs = txsForAddress(address || '');
+    res.writeHead(200); res.end(JSON.stringify({ ok: true, address: address, count: txs.length, archived: archive.size, transactions: txs }));
+    return;
+  }
+
+  // /snapshot — serves the seed's newest ledger snapshot (+ genesis.bin) so
+  // joiner nodes without direct gossip can refresh their state over HTTP.
+  if (req.url.startsWith('/snapshot')) {
+    (async () => {
+      let stage = null;
+      try {
+        const LEDGER = process.env.LEDGER || path.join(__dirname, '..', 'ledger');
+        const snapDir = path.join(LEDGER, 'snapshot');
+        let newest = null, mtime = 0;
+        try {
+          for (const f of fs.readdirSync(snapDir)) {
+            if (!f.endsWith('.tar.zst')) continue;
+            const st = fs.statSync(path.join(snapDir, f));
+            if (st.mtimeMs > mtime) { mtime = st.mtimeMs; newest = f; }
+          }
+        } catch (e) {}
+        if (!newest) { res.writeHead(404); return res.end(JSON.stringify({ ok: false, error: 'no snapshots on this node yet' })); }
+        stage = fs.mkdtempSync(path.join(os.tmpdir(), 'bigsnap-'));
+        fs.mkdirSync(path.join(stage, 'snapshot'));
+        fs.copyFileSync(path.join(snapDir, newest), path.join(stage, 'snapshot', 'snapshot-latest.tar.zst'));
+        const files = ['snapshot/snapshot-latest.tar.zst'];
+        if (fs.existsSync(path.join(LEDGER, 'genesis.bin'))) {
+          fs.copyFileSync(path.join(LEDGER, 'genesis.bin'), path.join(stage, 'genesis.bin'));
+          files.push('genesis.bin');
+        }
+        await new Promise((ok, bad) =>
+          exec(`tar -C ${stage} -czf ${stage}/bundle.tar.gz ${files.join(' ')}`, e => e ? bad(e) : ok()));
+        const stat = fs.statSync(path.join(stage, 'bundle.tar.gz'));
+        res.writeHead(200, { 'Content-Type': 'application/gzip', 'Content-Length': stat.size });
+        fs.createReadStream(path.join(stage, 'bundle.tar.gz')).pipe(res);
+        res.on('finish', () => { try { fs.rmSync(stage, { recursive: true, force: true }); } catch {} });
+      } catch (e) {
+        try { if (stage) fs.rmSync(stage, { recursive: true, force: true }); } catch {}
+        res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message }));
+      }
     })();
     return;
   }

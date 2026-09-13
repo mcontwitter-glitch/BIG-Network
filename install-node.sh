@@ -7,8 +7,12 @@
 #  One command (RPC replica — helps network speed by serving reads):
 #    curl -fsSL https://raw.githubusercontent.com/mcontwitter-glitch/BIG-Network/main/install-node.sh | sudo bash
 #
-#  Join the live seed (follows new blocks in real time):
-#    curl -fsSL .../install-node.sh | sudo bash -s -- --entrypoint seed-host:8001
+#  Join the live seed:
+#    DEFAULT: every install now tracks the live seed automatically (HTTP
+#    catch-up — no direct gossip needed, works through Runpod/Docker proxies).
+#    If the seed exposes a direct gossip port (public IP), real-time instead:
+#      curl -fsSL .../install-node.sh | sudo bash -s -- --entrypoint seed-host:8001
+#    Disable seed tracking entirely: --seed off
 #
 #  Modes:
 #    rpc        (default) — replica node, serves RPC reads, no vote. This is
@@ -19,9 +23,12 @@
 #               (info@bigfoot404.biz) to get the staking pass.
 #
 #  Flags:
-#    --entrypoint HOST:PORT   seed node gossip address to sync from (optional —
-#                             without it the node starts from the bundled
-#                             snapshot and serves reads at that slot)
+#    --entrypoint HOST:PORT   seed gossip address — real-time sync when the
+#                             seed exposes direct TCP/UDP (public IP)
+#    --seed GATEWAY_URL      seed gateway to catch up from (default: the live
+#                             BIG seed; polls /stats every 10 min and refreshes
+#                             the local ledger from the seed snapshot when
+#                             behind). "--seed off" disables.
 #    --mode rpc|validator     default rpc
 #    --dir /opt/big-chain     install location
 #    --rpc-port 8899          local RPC port
@@ -33,6 +40,7 @@ ENTRYPOINT=""
 DIR="/opt/big-chain"
 RPC_PORT="8899"
 FOREGROUND=0
+SEED_GW="https://8f2dvht9slxsi3-9090.proxy.runpod.net"
 while [ $# -gt 0 ]; do
   case "$1" in
     --entrypoint) ENTRYPOINT="${2:-}"; shift 2 ;;
@@ -44,6 +52,8 @@ while [ $# -gt 0 ]; do
     --rpc-port) RPC_PORT="${2:-8899}"; shift 2 ;;
     --rpc-port=*) RPC_PORT="${1#*=}"; shift ;;
     --foreground) FOREGROUND=1; shift ;;
+    --seed) SEED_GW="${2:-}"; shift 2 ;;
+    --seed=*) SEED_GW="${1#*=}"; shift ;;
     *) shift ;;
   esac
 done
@@ -104,6 +114,7 @@ fi
 ENTRY_ARG=""
 [ -n "$ENTRYPOINT" ] && ENTRY_ARG="--entrypoint $ENTRYPOINT"
 VAL_CMD="$AGAVE_BIN --ledger $DIR/ledger --identity $DIR/identity.json --rpc-port $RPC_PORT --gossip-port $GOSSIP_PORT --dynamic-port-range 8000-8020 --limit-ledger-size 100000000 --snapshot-interval-slots 200 $VOTE_ARGS $ENTRY_ARG --public-rpc"
+printf '%s\n' "$VAL_CMD" > "$DIR/val-cmd.txt"
 
 if [ "$FOREGROUND" -eq 1 ]; then
   # container mode (Runpod/Docker - no systemd): run directly, log to file
@@ -145,12 +156,69 @@ for i in $(seq 1 60); do
   sleep 3
 done
 
+# ---------------------------------------------------------------- 7. seed catch-up
+# The Runpod HTTP proxy cannot carry agave gossip (UDP/TCP), so without a
+# direct --entrypoint the node stays fresh by refreshing its ledger state
+# from the seed gateway instead: poll /stats, pull /snapshot, reboot the node.
+if [ -z "$ENTRYPOINT" ] && [ "$SEED_GW" != "off" ] && [ -n "$SEED_GW" ]; then
+  log "installing seed catch-up (tracks $SEED_GW every 10 min)..."
+  cat > "$DIR/catchup.sh" <<CATCH
+#!/usr/bin/env bash
+# BIG Chain catch-up - refresh local ledger state from the live seed.
+DIR="__DIR__"
+RPC_PORT="__RPC__"
+SEED_GW="__SEED__"
+LOG="\$DIR/catchup.log"
+ts() { date -u +"%Y-%m-%dT%H:%M:%SZ"; }
+log() { echo "[\$(ts)] \$*" >> "\$LOG"; }
+local_slot=\$(curl -s --max-time 8 http://127.0.0.1:\$RPC_PORT -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"getSlot"}' | jq -r '.result // 0')
+seed_slot=\$(curl -s --max-time 15 "\$SEED_GW/stats" | jq -r '.slot // 0')
+[ "\$local_slot" -gt 0 ] 2>/dev/null || { log "local RPC not answering, skipping"; exit 0; }
+[ "\$seed_slot" -gt 0 ]  2>/dev/null || { log "seed unreachable, skipping"; exit 0; }
+if [ "\$((seed_slot - local_slot))" -le 300 ]; then log "fresh (local=\$local_slot seed=\$seed_slot)"; exit 0; fi
+log "behind: local=\$local_slot seed=\$seed_slot -> refreshing snapshot"
+curl -fsSL --max-time 120 "\$SEED_GW/snapshot" -o "\$DIR/catchup-bundle.tar.gz" || { log "snapshot fetch failed"; exit 1; }
+if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet big-node 2>/dev/null; then
+  systemctl stop big-node
+else
+  [ -f "\$DIR/node.pid" ] && kill "\$(cat \$DIR/node.pid)" 2>/dev/null; sleep 2
+fi
+rm -rf "\$DIR/ledger/rocksdb" "\$DIR/ledger/snapshot"
+mkdir -p "\$DIR/ledger/snapshot"
+tar -xzf "\$DIR/catchup-bundle.tar.gz" -C "\$DIR/ledger/" || { log "extract failed"; exit 1; }
+if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ] && [ -f /etc/systemd/system/big-node.service ]; then
+  systemctl start big-node
+else
+  nohup \$(cat "\$DIR/val-cmd.txt") > "\$DIR/node.log" 2>&1 & echo \$! > "\$DIR/node.pid"
+fi
+log "restarted on refreshed state (seed was slot \$seed_slot)"
+CATCH
+  # fill in this node's actual values inside catchup.sh
+  sed -i "s|__DIR__|$DIR|g; s|__RPC__|$RPC_PORT|g; s|__SEED__|$SEED_GW|g" "$DIR/catchup.sh"
+  chmod +x "$DIR/catchup.sh"
+  if [ "$FOREGROUND" -eq 1 ]; then
+    # container mode: background loop instead of cron
+    nohup bash -c "while sleep 600; do '$DIR/catchup.sh' >/dev/null 2>&1; done" > "$DIR/catchup-loop.log" 2>&1 &
+    echo $! > "$DIR/catchup-loop.pid"
+    log "catch-up loop running (pid $(cat $DIR/catchup-loop.pid))"
+  else
+    echo "*/10 * * * * root $DIR/catchup.sh" > /etc/cron.d/big-chain
+    chmod 644 /etc/cron.d/big-chain
+    log "catch-up cron installed (/etc/cron.d/big-chain)"
+  fi
+elif [ -n "$ENTRYPOINT" ]; then
+  log "entrypoint set: real-time gossip sync, no catch-up loop needed"
+elif [ "$SEED_GW" = "off" ]; then
+  log "seed tracking disabled (--seed off) - node serves from local state only"
+fi
+
 echo ""
 log "================ BIG NODE UP ================"
 log "RPC:        http://<this-host>:${RPC_PORT}"
 log "gossip:     port ${GOSSIP_PORT}"
-[ -n "$ENTRYPOINT" ] && log "entrypoint:  $ENTRYPOINT"
-[ -z "$ENTRYPOINT" ] && log "no entrypoint: serving from bundled snapshot; add --entrypoint to follow live blocks"
+[ -n "$ENTRYPOINT" ] && log "entrypoint:  $ENTRYPOINT (real-time gossip)"
+[ -z "$ENTRYPOINT" ] && [ "$SEED_GW" != "off" ] && log "seed sync:   $SEED_GW (catch-up every 10 min)"
+[ "$SEED_GW" = "off" ] && log "seed sync:   disabled"
 if [ "$FOREGROUND" -eq 1 ]; then log "logs:       tail -f $DIR/node.log"; else log "logs:       journalctl -u big-node -f"; fi
 echo ""
 log "NEXT: send your node's public hostname + RPC port to the network team"
