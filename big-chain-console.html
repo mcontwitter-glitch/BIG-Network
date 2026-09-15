@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIG Chain — Testnet Console</title>
+<style>
+  :root { --navy:#0a1628; --navy2:#122340; --gold:#d4a017; --gold2:#f0c040; --steel:#7ba7c9; --ink:#e8eef4; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:radial-gradient(1200px 600px at 50% -10%, #16324f 0%, var(--navy) 55%, #06101d 100%); color:var(--ink); font-family:'Segoe UI',system-ui,sans-serif; min-height:100vh; }
+  .wrap { max-width:900px; margin:0 auto; padding:28px 20px 60px; }
+  header { text-align:center; padding:26px 0 10px; }
+  .logo { font-size:42px; font-weight:900; letter-spacing:2px; }
+  .logo span { color:var(--gold2); }
+  .tag { color:var(--steel); font-size:13px; margin-top:6px; letter-spacing:1px; text-transform:uppercase; }
+  .badge { display:inline-block; background:#1c3a1c; color:#7fdc7f; border:1px solid #2f5c2f; font-size:11px; padding:3px 10px; border-radius:20px; margin-top:12px; letter-spacing:1px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; margin-top:26px; }
+  .card { background:linear-gradient(180deg,var(--navy2),#0d1d36); border:1px solid #1e3a5f; border-radius:14px; padding:20px; box-shadow:0 8px 30px rgba(0,0,0,.35); }
+  .card h2 { font-size:14px; color:var(--gold2); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:12px; }
+  input[type=text] { width:100%; background:#081525; border:1px solid #24466e; color:var(--ink); border-radius:8px; padding:11px 12px; font-size:14px; font-family:monospace; }
+  input[type=text]:focus { outline:1px solid var(--gold); }
+  button { background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#10192b; font-weight:700; border:none; border-radius:8px; padding:11px 18px; cursor:pointer; font-size:14px; width:100%; margin-top:10px; letter-spacing:.5px; }
+  button:hover { filter:brightness(1.1); }
+  button:disabled { opacity:.5; cursor:wait; }
+  .stat { display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px dashed #1e3a5f; font-size:14px; }
+  .stat:last-child { border:none; }
+  .stat b { color:var(--gold2); font-family:monospace; }
+  #msg { text-align:center; margin-top:18px; font-size:14px; min-height:22px; }
+  .ok { color:#7fdc7f; } .err { color:#ff7f7f; } .wait { color:var(--steel); }
+  .explorer { max-height:340px; overflow-y:auto; margin-top:8px; }
+  .tx { font-family:monospace; font-size:12px; padding:9px 10px; border-left:2px solid var(--gold); margin:6px 0; background:#081525; border-radius:0 8px 8px 0; cursor:pointer; }
+  .tx:hover { background:#0c1c33; }
+  .tx .sig { color:var(--gold2); } .tx .meta { color:var(--steel); margin-top:3px; }
+  footer { text-align:center; margin-top:34px; color:#4a6a8a; font-size:12px; line-height:1.8; }
+  a { color:var(--steel); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">BIG <span>CHAIN</span></div>
+    <div class="tag">Bigfoot404 LLC · Testnet Prototype v0.1</div>
+    <div class="badge" id="netbadge">SOLANA DEVNET · $BIG</div>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <h2>💰 Balance Checker</h2>
+      <input type="text" id="addr" placeholder="Paste any Solana address...">
+      <button onclick="check()">Check Balance</button>
+      <div id="balres" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>🚰 Faucet — Get $BIG</h2>
+      <input type="text" id="faucet-addr" placeholder="Paste your address, get 100 BIG">
+      <button onclick="drip()">Claim 100 $BIG</button>
+      <div id="faucet-res" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Chain Stats</h2>
+      <div class="stat"><span>Network</span><b>Devnet</b></div>
+      <div class="stat"><span>Token</span><b>$BIG</b></div>
+      <div class="stat"><span>Genesis Supply</span><b>404,000,000</b></div>
+      <div class="stat"><span>Treasury</span><b id="treasury" style="font-size:11px"></b></div>
+    </div>
+
+    <div class="card">
+      <h2>🧭 Latest $BIG Activity</h2>
+      <button onclick="loadTxs()">Refresh Explorer</button>
+      <div class="explorer" id="txs"></div>
+    </div>
+  </div>
+
+  <div id="msg"></div>
+
+  <footer>
+    Testnet prototype — $BIG has zero value, devnet tokens are free play money.<br>
+    BIG Chain is powered by Solana devnet under the hood · Bigfoot404 LLC · 1-800-404-4187
+  </footer>
+</div>
+
+<script>
+const RPC = 'https://api.devnet.solana.com';
+const MINT = '__MINT__';
+const TREASURY = '__TREASURY__';
+document.getElementById('treasury').textContent = TREASURY.slice(0,6) + '..' + TREASURY.slice(-4);
+const msg = (t, cls) => { const m = document.getElementById('msg'); m.textContent = t; m.className = cls || ''; };
+async function rpc(method, params) {
+  const r = await fetch(RPC, {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({jsonrpc:'2.0', id:1, method, params})});
+  return (await r.json()).result;
+}
+async function check() {
+  const a = document.getElementById('addr').value.trim();
+  const out = document.getElementById('balres');
+  if (!a) { out.innerHTML = '<span class="err">Paste an address first</span>'; return; }
+  out.innerHTML = '<span class="wait">Checking...</span>';
+  try {
+    const sol = await rpc('getBalance', [a]);
+    const accounts = await rpc('getTokenAccountsByOwner', [a, {mint: MINT}, {encoding:'jsonParsed'}]);
+    let big = 0;
+    (accounts.value||[]).forEach(acc => { big += Number(acc.account.data.parsed.info.tokenAmount.uiAmount || 0); });
+    out.innerHTML = `<div class="stat"><span>SOL (devnet)</span><b>${sol/1e9}</b></div>
+                     <div class="stat"><span>$BIG</span><b>${big.toLocaleString()}</b></div>`;
+  } catch(e) { out.innerHTML = '<span class="err">RPC error — devnet hiccup, retry</span>'; }
+}
+async function drip() {
+  const a = document.getElementById('faucet-addr').value.trim();
+  const out = document.getElementById('faucet-res');
+  if (!a) { out.innerHTML = '<span class="err">Paste your address first</span>'; return; }
+  const btn = event.target; btn.disabled = true; out.innerHTML = '<span class="wait">Pouring...</span>';
+  try {
+    const r = await fetch('__FAUCET_URL__', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({address: a})});
+    const j = await r.json();
+    out.innerHTML = j.ok
+      ? `<span class="ok">✅ 100 $BIG sent — <a href="https://explorer.solana.com/tx/${j.sig}?cluster=devnet" target="_blank">view on explorer</a></span>`
+      : `<span class="err">${j.error || 'faucet error'}</span>`;
+  } catch(e) { out.innerHTML = '<span class="err">Faucet unreachable — try again</span>'; }
+  btn.disabled = false;
+}
+async function loadTxs() {
+  const box = document.getElementById('txs');
+  box.innerHTML = '<span class="wait">Loading...</span>';
+  try {
+    const sigs = await rpc('getSignaturesForAddress', [MINT, {limit: 10}]);
+    box.innerHTML = sigs.length ? '' : '<span class="wait">No activity yet — claim from the faucet!</span>';
+    sigs.forEach(s => {
+      const d = document.createElement('div');
+      d.className = 'tx';
+      const t = new Date(s.blockTime * 1000).toLocaleTimeString();
+      d.innerHTML = `<div class="sig">${s.signature.slice(0,14)}..${s.signature.slice(-6)}</div><div class="meta">${t} · ${s.err ? 'FAILED' : 'OK'} · ${s.memo ? '' : ''}</div>`;
+      d.onclick = () => window.open('https://explorer.solana.com/tx/' + s.signature + '?cluster=devnet');
+      box.appendChild(d);
+    });
+  } catch(e) { box.innerHTML = '<span class="err">RPC error</span>'; }
+}
+loadTxs();
+</script>
+</body>
+</html>

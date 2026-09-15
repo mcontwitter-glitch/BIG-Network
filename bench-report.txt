@@ -1,0 +1,32 @@
+BIG NETWORK — SPEED TEST REPORT
+Generated: Sept 8, 2026 ~5:35 PM ET
+
+CHAIN STATUS
+- Health: OK (local devnet, single-node test-validator, Agave 2.1.21)
+- Epoch 0, slot 196 — full ledger restored after sandbox restart (404M $BIG supply intact)
+
+RESULTS
+1) Sequential transfers (send -> wait for confirmation, one at a time)
+   - Count: 20 confirmed transfers
+   - Avg latency: 3919 ms  |  p50: 3341 ms
+   - Fastest: 2417 ms  |  Slowest: 6973 ms
+   - Throughput: 0.26 TPS
+
+2) Burst transfers (fired concurrently, then polled to full confirmation)
+   - Count: 30 transactions
+   - All confirmed: True
+   - Submission burst: 827 ms (36.28 TPS submit rate)
+   - Full batch confirmation: 5311 ms
+   - Effective TPS: 4.89
+
+3) Block production
+   - Average block time: 1 s across 13 sampled slots
+   - Target: 0.4 s — local sandbox runs ~2x slower than target
+
+HONEST READ
+- This is the SANDBOX PROTOTYPE validator: single node, CPU-only, inside a container with hard system
+  limits (the sandbox can't even run the full-node validator binary). These numbers are a FLOOR.
+- Sequential TPS is low by design — it waits for each confirmation before sending the next. The burst
+  submit rate (36.28 TPS) is the better indicator of raw transaction handling.
+- On the spec'd Runpod pod (2 vCPU / 16GB, docs/POD-SPEC.md, ~$80/mo), expect blocks near the 0.4s
+  target and confirmation latency well under 2s.

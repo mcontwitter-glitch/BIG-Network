@@ -1,0 +1,52 @@
+{
+  "started": "2026-09-08T21:22:47.056Z",
+  "chain": {
+    "version": "2.1.21",
+    "epoch": 0,
+    "slot": 196,
+    "health": "ok"
+  },
+  "sequential": {
+    "count": 20,
+    "avg_ms": 3919,
+    "min_ms": 2417,
+    "max_ms": 6973,
+    "p50": 3341,
+    "tps": 0.26,
+    "latencies": [
+      6124,
+      3341,
+      2670,
+      2942,
+      3322,
+      2921,
+      2826,
+      4017,
+      3386,
+      3711,
+      6973,
+      3315,
+      6725,
+      3082,
+      2417,
+      2917,
+      6504,
+      2640,
+      3430,
+      5116
+    ]
+  },
+  "burst": {
+    "count": 30,
+    "submitted_ms": 827,
+    "all_confirmed": true,
+    "confirm_ms": 5311,
+    "effective_tps": 4.89,
+    "submit_rate_tps": 36.28
+  },
+  "blocks": {
+    "sampled": 13,
+    "avg_block_seconds": 1,
+    "target": 0.4
+  }
+}
