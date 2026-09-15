@@ -1,5 +1,5 @@
 #!/bin/bash
-# BIG Network boot v5 — SPACE-SAFE RESUME + dpkg repair (volume hit 100%)
+# BIG Network boot v4 — SPACE-SAFE RESUME (volume hit 100%)
 # Logs go to container stdout (runpodctl pod logs). Nothing touches the full
 # volume until the space-free step at the top has run.
 set -x
@@ -34,13 +34,9 @@ cd /workspace/bigchain/app
 # 2) keys from volume into app
 cp -f /workspace/bigchain/treasury.key /workspace/bigchain/mint.key /workspace/bigchain/keys.env /workspace/bigchain/chain.json /workspace/bigchain/app/ 2>/dev/null || true
 
-# 3) node 20 (v5: repair dpkg first — interrupted boots leave apt locked)
-export DEBIAN_FRONTEND=noninteractive
-dpkg --configure -a >/dev/null 2>&1 || true
-rm -f /var/lib/apt/lists/lock /var/lib/dpkg/lock* /var/cache/apt/archives/lock 2>/dev/null || true
+# 3) node 20
 if ! command -v node >/dev/null 2>&1 || [ "$(node -v 2>/dev/null | cut -c2-3)" -lt 20 ]; then
   curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >/dev/null
-  dpkg --configure -a >/dev/null 2>&1 || true
   apt-get install -y nodejs >/dev/null
 fi
 node -v
