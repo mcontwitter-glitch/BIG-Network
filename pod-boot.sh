@@ -1,5 +1,5 @@
 #!/bin/bash
-# BIG Network validator pod boot — v3.1: RESUME-FIRST (never wipe a live ledger) + dpkg repair.
+# BIG Network validator pod boot — v5: RESUME-FIRST (never wipe a live ledger) + dpkg self-repair + direct agave download (multi-attach I/O stall guard).
 # Expects env: STATE_URL (signed URL to bigchain-state.zip: treasury/mint keys)
 mkdir -p /workspace/bigchain
 exec >> /workspace/bigchain/boot.log 2>&1
@@ -23,11 +23,11 @@ if [ ! -f /workspace/bigchain/treasury.key ]; then
 fi
 cp -f /workspace/bigchain/treasury.key /workspace/bigchain/mint.key /workspace/bigchain/keys.env /workspace/bigchain/chain.json /workspace/bigchain/app/ 2>/dev/null || true
 
-# 3) node 20
+# 3) node 20 (v5: repair apt/dpkg first — interrupted boots leave dpkg locked)
+export DEBIAN_FRONTEND=noninteractive
+dpkg --configure -a >/dev/null 2>&1 || true
+rm -f /var/lib/apt/lists/lock /var/lib/dpkg/lock* /var/cache/apt/archives/lock 2>/dev/null || true
 if ! command -v node >/dev/null 2>&1 || [ "$(node -v 2>/dev/null | cut -c2-3)" -lt 20 ]; then
-  export DEBIAN_FRONTEND=noninteractive
-  dpkg --configure -a >/dev/null 2>&1 || true   # v3.1: repair dpkg after interrupted boots
-  rm -f /var/lib/apt/lists/lock /var/lib/dpkg/lock* /var/cache/apt/archives/lock 2>/dev/null || true
   curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >/dev/null
   dpkg --configure -a >/dev/null 2>&1 || true
   apt-get install -y nodejs >/dev/null
@@ -35,27 +35,19 @@ fi
 node -v
 npm install --no-audit --no-fund
 
-# 4) agave v2.1.21 (tarball cached on volume, integrity-checked)
+# 4) agave v2.1.21 (v5: download direct to /tmp container disk — NEVER read the 298MB
+#    tarball from the network volume; a multi-attach volume can I/O-stall the integrity
+#    check for 20+ minutes and wedge the boot. Volume tarball = manual fallback only.)
 if [ ! -x /usr/local/bin/solana-test-validator ]; then
-  if [ ! -f /workspace/bigchain/solana-release.tar.bz2 ] || ! tar -tjf /workspace/bigchain/solana-release.tar.bz2 >/dev/null 2>&1; then
-    echo "agave tarball missing or corrupt — downloading fresh (resumable loop)"
-    rm -f /workspace/bigchain/solana-release.tar.bz2
-    ok=0
-    for try in $(seq 1 60); do
-      curl -fsSL -C - --max-time 600 -o /workspace/bigchain/solana-release.tar.bz2 \
-        https://github.com/anza-xyz/agave/releases/download/v2.1.21/solana-release-x86_64-unknown-linux-gnu.tar.bz2 && { ok=1; break; }
-      echo "download attempt $try incomplete ($(stat -c%s /workspace/bigchain/solana-release.tar.bz2 2>/dev/null || echo 0) bytes) — resuming"
-      sleep 3
-    done
-    [ "$ok" = 1 ] || { echo "FATAL: agave download failed after retries"; exit 1; }
-    sz=$(stat -c%s /workspace/bigchain/solana-release.tar.bz2)
-    [ "$sz" = "298782636" ] || { echo "FATAL: agave tarball size mismatch ($sz != 298782636)"; exit 1; }
-    tar -tjf /workspace/bigchain/solana-release.tar.bz2 >/dev/null 2>&1 || { echo "FATAL: downloaded tarball still corrupt"; exit 1; }
-  fi
-  tar -xjf /workspace/bigchain/solana-release.tar.bz2 -C /tmp || { echo "FATAL: agave extract failed"; exit 1; }
-  cp /tmp/solana-release*/bin/solana-test-validator /usr/local/bin/ || { echo "FATAL: validator install failed"; exit 1; }
+  for try in 1 2 3 4 5; do
+    curl -fsSL --max-time 600 -o /tmp/agave.tar.bz2 https://github.com/anza-xyz/agave/releases/download/v2.1.21/solana-release-x86_64-unknown-linux-gnu.tar.bz2 && break
+    echo "agave download attempt $try failed — retrying in 5s"; sleep 5
+  done
+  tar -xjf /tmp/agave.tar.bz2 -C /tmp
+  cp /tmp/solana-release/bin/solana-test-validator /usr/local/bin/
+  rm -f /tmp/agave.tar.bz2
 fi
-solana-test-validator --version
+solana-test-validator --version | head -1
 
 # 5) gateway bind patch (proxy needs 0.0.0.0; VAL rpc stays 127.0.0.1)
 sed -i "s/}).listen(9090, '127.0.0.1'/}).listen(9090, '0.0.0.0'/" gateway.js
