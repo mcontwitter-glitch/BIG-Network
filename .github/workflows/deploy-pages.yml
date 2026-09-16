@@ -3,7 +3,7 @@ name: Deploy BIG Network site to GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['public/**']
+    paths: ['public/**', 'index.html']
   workflow_dispatch:
 
 permissions:
@@ -23,6 +23,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Assemble site (brand landing at root + gateway app pages)
+        run: |
+          mkdir -p site
+          cp public/* site/
+          cp public/index.html site/faucet.html
+          cp index.html site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
