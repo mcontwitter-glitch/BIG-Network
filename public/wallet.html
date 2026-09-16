@@ -149,7 +149,7 @@
   .navbtn{background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:4px;
     color:var(--dim2);cursor:pointer;font-family:'Inter',sans-serif;position:relative;padding-top:8px}
   .navbtn svg{width:18px;height:18px}
-  .navbtn span{font-size:9.5px;letter-spacing:.03em}
+  .navbtn span{font-size:9.5px;letter-spacing:.04em;font-family:var(--font-mono)}
   .navbtn.active{color:var(--cyan)}
   .navbtn.active::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:22px;height:2px;
     background:var(--cyan);box-shadow:0 0 10px var(--cyan-glow);border-radius:2px}
@@ -173,12 +173,12 @@
   .out-msg{margin-top:12px;font-size:11.5px;padding:10px 12px;border-radius:10px;background:rgba(0,0,0,.5);border:1px solid var(--line);
     color:var(--dim);word-break:break-all;white-space:pre-wrap}
   .out-msg.ok{color:var(--ok);border-color:rgba(0,232,133,.3)}
-  .out-msg.bad{color:var(--bad);border-color:rgba(255,92,106,.3)}
+  .out-msg.bad{color:var(--bad);border-color:rgba(255,107,107,.3)}
   .seedgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
   .seedword{background:rgba(0,0,0,.5);border:1px solid var(--line);border-radius:9px;padding:9px 6px;font-family:var(--font-mono);font-size:11px;
     color:var(--text);text-align:center}
   .seedword b{color:var(--dim2);margin-right:5px}
-  .warn{font-size:10.5px;color:var(--bad);border:1px solid rgba(255,92,106,.3);background:rgba(255,92,106,.06);
+  .warn{font-size:10.5px;color:var(--bad);border:1px solid rgba(255,107,107,.3);background:rgba(255,107,107,.06);
     border-radius:10px;padding:10px 12px;margin-top:12px;line-height:1.6}
   .checkline{display:flex;align-items:flex-start;gap:8px;margin-top:14px;font-size:11px;color:var(--dim)}
   .checkline input{width:auto;margin:0}
