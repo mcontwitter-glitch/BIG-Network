@@ -7,7 +7,7 @@
 <meta name="description" content="BIG Network — the official blockchain of Bigfoot404 LLC. $BIG token, faucet, BIGscan explorer, BIG wallet, and node setup.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg0:#060606; --bg1:#0a0d0b; --panel:#0e120f; --panel2:#121712;
@@ -16,90 +16,263 @@
     --green:#00e885; --amber:#ffc85c; --red:#ff5c6a; --ink:#e8f0eb; --dim:#8aa096;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  html,body { min-height:100vh; }
+  html { scroll-behavior:smooth; }
   body {
-    background:
-      radial-gradient(1000px 560px at 50% -12%, rgba(0,232,133,.085) 0%, rgba(6,6,6,0) 60%),
-      radial-gradient(760px 760px at 92% 108%, rgba(0,232,133,.045) 0%, rgba(6,6,6,0) 55%),
-      linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 100%);
-    color:var(--ink); font-family:'Inter',-apple-system,'Segoe UI',sans-serif;
-    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:44px 20px;
-    letter-spacing:.1px;
+    background:var(--bg0); color:var(--ink); font-family:'Inter',-apple-system,'Segoe UI',sans-serif;
+    letter-spacing:.1px; overflow-x:hidden;
   }
-  .wrap { width:100%; max-width:480px; }
-  .logo { text-align:center; margin-bottom:8px; }
-  .logo .big { font-family:'Space Grotesk',sans-serif; font-size:44px; font-weight:700; color:var(--cyan); letter-spacing:2px; text-shadow:0 0 26px var(--cyan-glow); }
-  .logo .chain { font-family:'Space Grotesk',sans-serif; font-size:12.5px; color:var(--dim); letter-spacing:5px; text-transform:uppercase; margin-top:6px; }
-  .livebadge { display:inline-flex; align-items:center; gap:7px; margin:16px auto 0; padding:6px 16px; border:1px solid var(--border-lit); border-radius:999px; color:var(--green); font-size:10px; letter-spacing:2px; text-transform:uppercase; background:rgba(0,232,133,.06); }
+  a { color:inherit; }
+  .container { max-width:1180px; margin:0 auto; padding:0 24px; }
+  .grad-top { position:fixed; inset:0; z-index:-1;
+    background:
+      radial-gradient(1200px 640px at 50% -10%, rgba(0,232,133,.10) 0%, rgba(6,6,6,0) 58%),
+      radial-gradient(900px 900px at 100% 10%, rgba(0,232,133,.05) 0%, rgba(6,6,6,0) 55%),
+      linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 100%);
+  }
+
+  /* NAV */
+  nav { position:sticky; top:0; z-index:50; display:flex; align-items:center; justify-content:space-between;
+    padding:18px 24px; backdrop-filter:blur(14px); background:rgba(6,6,6,.72); border-bottom:1px solid var(--border); }
+  .navlogo { display:flex; align-items:center; gap:9px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:19px; }
+  .navlogo .mk { color:var(--cyan); text-shadow:0 0 16px var(--cyan-glow); }
+  .navlogo .sub { font-size:9.5px; color:var(--dim); letter-spacing:3px; text-transform:uppercase; font-weight:500; margin-left:4px; }
+  .navlinks { display:flex; gap:34px; font-size:13.5px; font-weight:500; }
+  .navlinks a { text-decoration:none; color:var(--dim); transition:.15s; }
+  .navlinks a:hover { color:var(--ink); }
+  .navcta { display:flex; align-items:center; gap:7px; padding:10px 20px; border:1px solid var(--border-lit); border-radius:999px;
+    color:var(--green); font-size:13px; font-weight:600; text-decoration:none; background:rgba(0,232,133,.06); transition:.15s; }
+  .navcta:hover { background:rgba(0,232,133,.14); box-shadow:0 0 22px rgba(0,232,133,.18); }
+  .navmobile { display:none; }
+  @media (max-width:860px){ .navlinks{ display:none; } }
+
+  /* HERO */
+  .hero { display:grid; grid-template-columns:1.05fr .95fr; gap:40px; align-items:center; padding:76px 24px 60px; max-width:1180px; margin:0 auto; }
+  @media (max-width:900px){ .hero{ grid-template-columns:1fr; padding-top:48px; } }
+  .badge { display:inline-flex; align-items:center; gap:8px; padding:7px 16px; border:1px solid var(--border-lit); border-radius:999px;
+    color:var(--green); font-size:10.5px; letter-spacing:2px; text-transform:uppercase; background:rgba(0,232,133,.06); margin-bottom:22px; font-weight:600; }
   .livedot { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 10px var(--green); animation:pulse 1.8s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
-  .tagline { text-align:center; color:var(--dim); font-size:13px; margin:20px 0 30px; letter-spacing:.6px; line-height:1.7; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  h1 { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:56px; line-height:1.06; letter-spacing:-.5px; }
+  h1 .hl { color:var(--cyan); text-shadow:0 0 30px var(--cyan-glow); }
+  @media (max-width:600px){ h1{ font-size:38px; } }
+  .heroP { color:var(--dim); font-size:16.5px; line-height:1.7; margin:22px 0 30px; max-width:480px; }
+  .herobtns { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:40px; }
+  .btn { display:inline-flex; align-items:center; gap:8px; padding:14px 26px; border-radius:12px; font-weight:600; font-size:14.5px; text-decoration:none; transition:.15s; }
+  .btn-primary { background:var(--green); color:#04150c; box-shadow:0 10px 30px rgba(0,232,133,.28); }
+  .btn-primary:hover { transform:translateY(-2px); box-shadow:0 14px 36px rgba(0,232,133,.4); }
+  .btn-outline { border:1px solid var(--border-lit); color:var(--ink); background:rgba(255,255,255,.02); }
+  .btn-outline:hover { border-color:var(--cyan); background:rgba(0,232,133,.06); }
+  .herofeats { display:flex; gap:30px; flex-wrap:wrap; }
+  .feat { display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--dim); font-weight:500; }
+  .feat .ic { width:30px; height:30px; border-radius:9px; border:1px solid var(--border-lit); display:flex; align-items:center; justify-content:center; color:var(--cyan); font-size:14px; background:rgba(0,232,133,.05); flex:none; }
 
-  .stats { display:flex; gap:12px; margin-bottom:18px; }
-  .stat { flex:1; background:linear-gradient(180deg, var(--panel2), var(--panel)); border:1px solid var(--border); border-radius:14px; padding:16px; text-align:center; }
-  .stat .v { font-family:'Space Grotesk',sans-serif; font-size:19px; font-weight:700; color:var(--cyan); text-shadow:0 0 12px var(--cyan-glow); }
-  .stat .k { font-size:9.5px; color:var(--dim); text-transform:uppercase; letter-spacing:1.5px; margin-top:6px; }
+  .heroimgwrap { position:relative; }
+  .heroimg { width:100%; border-radius:22px; border:1px solid var(--border); box-shadow:0 30px 70px rgba(0,0,0,.55), 0 0 60px rgba(0,232,133,.08); display:block; }
+  .heroquote { position:absolute; top:-10px; left:18px; font-family:'Space Grotesk',sans-serif; font-style:italic; font-size:12px; color:var(--dim); background:rgba(6,6,6,.8); padding:6px 12px; border-radius:8px; border:1px solid var(--border); transform:rotate(-2deg); }
+  .signpost { position:absolute; bottom:-22px; right:-14px; background:rgba(10,13,11,.92); border:1px solid var(--border-lit); border-radius:14px; padding:12px 14px; box-shadow:0 18px 40px rgba(0,0,0,.5); display:flex; flex-direction:column; gap:8px; backdrop-filter:blur(8px); }
+  .signrow { display:flex; align-items:center; gap:8px; font-family:'Space Grotesk',sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink); font-weight:600; }
+  .signrow .arrow2 { color:var(--cyan); }
+  @media (max-width:900px){ .signpost{ display:none; } }
 
-  .card { position:relative; background:linear-gradient(180deg, var(--panel2), var(--panel)); border:1px solid var(--border); border-radius:16px; padding:22px 20px; margin-bottom:14px; box-shadow:0 18px 44px rgba(0,0,0,.4); display:flex; align-items:center; gap:16px; text-decoration:none; transition:border-color .15s, transform .15s, box-shadow .15s; }
-  .card:hover { border-color:var(--border-lit); transform:translateY(-2px); box-shadow:0 18px 44px rgba(0,0,0,.55), 0 0 24px rgba(0,232,133,.10); }
-  .glyph { width:40px; height:40px; flex:none; border-radius:12px; border:1px solid var(--border-lit); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:var(--cyan); background:rgba(0,232,133,.05); }
-  .card .t { font-family:'Space Grotesk',sans-serif; font-size:14.5px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:var(--ink); }
-  .card .d { font-size:11.5px; color:var(--dim); margin-top:4px; line-height:1.5; }
-  .card .arrow { margin-left:auto; color:var(--cyan); font-family:'Space Grotesk',sans-serif; font-size:16px; opacity:.7; }
+  section { padding:70px 24px; max-width:1180px; margin:0 auto; }
+  .kicker { color:var(--green); font-size:11.5px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; margin-bottom:10px; }
+  h2 { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:32px; line-height:1.2; letter-spacing:-.3px; }
+  @media (max-width:600px){ h2{ font-size:26px; } }
 
-  .foot { text-align:center; margin-top:26px; }
-  .foot a { color:var(--dim); font-size:12px; text-decoration:none; margin:0 12px; letter-spacing:1px; text-transform:uppercase; border-bottom:1px solid transparent; transition:.15s; }
-  .foot a:hover { color:var(--cyan); border-color:var(--cyan); }
-  .copy { text-align:center; margin-top:18px; font-size:10.5px; color:#51665c; letter-spacing:1px; }
+  /* DISCOVER / VIDEO */
+  .discover { display:grid; grid-template-columns:1fr 1fr; gap:44px; align-items:center; }
+  @media (max-width:900px){ .discover{ grid-template-columns:1fr; } }
+  .vidcard { position:relative; border-radius:20px; overflow:hidden; border:1px solid var(--border); aspect-ratio:16/10;
+    background:linear-gradient(160deg, #0e2018, #060a08 70%); display:flex; align-items:center; justify-content:center; box-shadow:0 24px 60px rgba(0,0,0,.5); }
+  .vidcard .grain { position:absolute; inset:0; background:radial-gradient(500px 300px at 30% 30%, rgba(0,232,133,.12), transparent 60%); }
+  .playbtn { width:64px; height:64px; border-radius:50%; background:var(--green); display:flex; align-items:center; justify-content:center; color:#04150c; font-size:22px; box-shadow:0 0 40px rgba(0,232,133,.5); z-index:2; cursor:pointer; }
+  .vidlabel { position:absolute; bottom:18px; left:18px; z-index:2; }
+  .vidlabel .k1 { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; }
+  .vidlabel .k2 { font-size:11.5px; color:var(--dim); margin-top:2px; }
+  .discoverP { color:var(--dim); font-size:15px; line-height:1.75; margin:18px 0 26px; }
+  .chipgrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:26px; }
+  .chip { background:linear-gradient(180deg, var(--panel2), var(--panel)); border:1px solid var(--border); border-radius:14px; padding:16px; }
+  .chip .cv { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:var(--cyan); }
+  .chip .ck { font-size:10.5px; color:var(--dim); text-transform:uppercase; letter-spacing:1px; margin-top:5px; }
+
+  /* EXPLORE CARD GRID */
+  .cardgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:22px; margin-top:36px; }
+  @media (max-width:860px){ .cardgrid{ grid-template-columns:1fr; } }
+  .ecard { display:block; text-decoration:none; border-radius:18px; overflow:hidden; border:1px solid var(--border); background:linear-gradient(180deg, var(--panel2), var(--panel)); transition:.18s; box-shadow:0 14px 34px rgba(0,0,0,.35); }
+  .ecard:hover { transform:translateY(-4px); border-color:var(--border-lit); box-shadow:0 20px 44px rgba(0,0,0,.5), 0 0 30px rgba(0,232,133,.12); }
+  .ecard .top { height:120px; display:flex; align-items:center; justify-content:center; font-size:44px; color:var(--cyan); background:radial-gradient(200px 120px at 50% 0%, rgba(0,232,133,.14), transparent 70%); border-bottom:1px solid var(--border); }
+  .ecard .body { padding:20px 20px 22px; }
+  .ecard .badge2 { display:inline-block; font-size:9.5px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--green); background:rgba(0,232,133,.1); border:1px solid var(--border-lit); border-radius:6px; padding:3px 8px; margin-bottom:10px; }
+  .ecard .t2 { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:17px; margin-bottom:6px; }
+  .ecard .d2 { font-size:13px; color:var(--dim); line-height:1.6; }
+
+  /* SPLIT IMAGE SECTION */
+  .split { display:grid; grid-template-columns:.9fr 1.1fr; gap:44px; align-items:center; }
+  @media (max-width:900px){ .split{ grid-template-columns:1fr; } }
+  .splitimg { width:100%; border-radius:20px; border:1px solid var(--border); box-shadow:0 24px 60px rgba(0,0,0,.5); }
+  .checklist { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:22px 0 30px; }
+  .checkitem { display:flex; gap:10px; align-items:flex-start; font-size:13px; color:var(--ink); font-weight:500; }
+  .checkitem .cic { color:var(--cyan); flex:none; }
+
+  /* CTA / NEWSLETTER */
+  .ctabox { border-radius:24px; border:1px solid var(--border-lit); background:linear-gradient(135deg, rgba(0,232,133,.08), rgba(14,18,15,.9)); padding:52px 44px; display:grid; grid-template-columns:1.1fr .9fr; gap:40px; align-items:center; box-shadow:0 30px 70px rgba(0,0,0,.4); }
+  @media (max-width:900px){ .ctabox{ grid-template-columns:1fr; padding:36px 26px; } }
+  .ctabox h3 { font-family:'Space Grotesk',sans-serif; font-weight:800; font-size:26px; font-style:italic; }
+  .joinbox h3 { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; margin-bottom:8px; }
+  .joinbox p { color:var(--dim); font-size:13px; margin-bottom:18px; }
+  .joinform { display:flex; gap:10px; margin-bottom:20px; }
+  .joinform input { flex:1; padding:13px 16px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,.03); color:var(--ink); font-size:13.5px; outline:none; }
+  .joinform input:focus { border-color:var(--cyan); }
+  .joinform button { width:44px; border-radius:10px; border:none; background:var(--green); color:#04150c; font-size:16px; cursor:pointer; }
+  .socials { display:flex; gap:14px; }
+  .socials a { width:36px; height:36px; border-radius:9px; border:1px solid var(--border-lit); display:flex; align-items:center; justify-content:center; color:var(--dim); text-decoration:none; font-size:14px; transition:.15s; }
+  .socials a:hover { color:var(--cyan); border-color:var(--cyan); }
+
+  /* FOOTER */
+  footer { border-top:1px solid var(--border); padding:44px 24px 30px; margin-top:40px; }
+  .footwrap { max-width:1180px; margin:0 auto; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:24px; }
+  .footlogo { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:17px; }
+  .footlogo .mk { color:var(--cyan); }
+  .foottag { color:var(--dim); font-size:12px; margin-top:6px; letter-spacing:1px; text-transform:uppercase; }
+  .footlinks { display:flex; gap:28px; flex-wrap:wrap; }
+  .footlinks a { font-size:13px; color:var(--dim); text-decoration:none; }
+  .footlinks a:hover { color:var(--cyan); }
+  .footbottom { max-width:1180px; margin:26px auto 0; padding-top:20px; border-top:1px solid var(--border); text-align:center; color:#51665c; font-size:11px; letter-spacing:.5px; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="logo"><div class="big">B<b>I</b>G</div><div class="chain">Network · Bigfoot404</div></div>
-  <div style="text-align:center"><span class="livebadge"><span class="livedot"></span>Live Network</span></div>
-  <p class="tagline">The official blockchain of Bigfoot404 LLC.<br>Powering the corporate treasury, digital assets, and company operations.</p>
+<div class="grad-top"></div>
 
-  <div class="stats">
-    <div class="stat"><div class="v" id="supply">—</div><div class="k">Supply</div></div>
-    <div class="stat"><div class="v" id="slot">—</div><div class="k">Slot</div></div>
+<nav>
+  <div class="navlogo"><span class="mk">BIG</span> NETWORK<span class="sub">Bigfoot404</span></div>
+  <div class="navlinks">
+    <a href="#home">Home</a>
+    <a href="#discover">Chain</a>
+    <a href="#explore">Ecosystem</a>
+    <a href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/">Faucet</a>
+    <a href="#community">Community</a>
   </div>
+  <a class="navcta" href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/wallet">◈ Connect Wallet</a>
+</nav>
 
-  <a class="card" href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/">
-    <div class="glyph">◈</div>
-    <div><div class="t">Faucet</div><div class="d">Claim $BIG on the standalone ledger</div></div>
-    <div class="arrow">→</div>
-  </a>
-
-  <a class="card" href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/scan">
-    <div class="glyph">◎</div>
-    <div><div class="t">BIGscan</div><div class="d">Explore transactions on the BIG ledger</div></div>
-    <div class="arrow">→</div>
-  </a>
-
-  <a class="card" href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/wallet">
-    <div class="glyph">▣</div>
-    <div><div class="t">BIG Wallet</div><div class="d">Chain-backed custodial wallet service</div></div>
-    <div class="arrow">→</div>
-  </a>
-
-  <a class="card" href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/node-setup">
-    <div class="glyph">⬡</div>
-    <div><div class="t">Run-A-Node</div><div class="d">Join the network as a validator node</div></div>
-    <div class="arrow">→</div>
-  </a>
-
-  <div class="foot">
-    <a href="https://github.com/mcontwitter-glitch/BIG-Network">Docs</a>
-    <a href="https://bigfoot404.biz">Bigfoot404</a>
+<section class="hero" id="home">
+  <div>
+    <span class="badge"><span class="livedot"></span>Live Network</span>
+    <h1>DECENTRALIZED<br><span class="hl">BUILT BIGFOOT</span><br>SIZED.</h1>
+    <p class="heroP">BIG Network is the official blockchain of Bigfoot404 LLC — a Web3 ecosystem powering the $BIG token, a real explorer, a real wallet, and a network anyone can run a node on.</p>
+    <div class="herobtns">
+      <a class="btn btn-primary" href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/scan">Explore The Chain →</a>
+      <a class="btn btn-outline" href="https://github.com/mcontwitter-glitch/BIG-Network">Join The Community</a>
+    </div>
+    <div class="herofeats">
+      <div class="feat"><span class="ic">◈</span>Live Ledger</div>
+      <div class="feat"><span class="ic">◎</span>Open Explorer</div>
+      <div class="feat"><span class="ic">⬡</span>Run Your Node</div>
+    </div>
   </div>
-  <div class="copy">© 2026 Bigfoot404 LLC</div>
-</div>
+  <div class="heroimgwrap">
+    <span class="heroquote">"Same Roots.<br>Bigger Reach."</span>
+    <img class="heroimg" src="https://media.base44.com/images/public/69f56986c51e35a876adf38d/666a1d98f_generated_image.png" alt="BIG Network">
+    <div class="signpost">
+      <div class="signrow"><span class="arrow2">→</span>MINE</div>
+      <div class="signrow"><span class="arrow2">→</span>STAKE</div>
+      <div class="signrow"><span class="arrow2">→</span>TRADE</div>
+      <div class="signrow"><span class="arrow2">→</span>HODL</div>
+    </div>
+  </div>
+</section>
 
-<script>
-fetch('https://8f2dvht9slxsi3-9090.proxy.runpod.net/stats').then(r=>r.json()).then(s=>{
-  document.getElementById('supply').textContent = (s.supply/1e6).toFixed(1)+'M';
-  document.getElementById('slot').textContent = '#'+s.slot;
-}).catch(()=>{});
-</script>
+<section class="discover" id="discover">
+  <a class="vidcard" href="https://github.com/mcontwitter-glitch/BIG-Network" style="text-decoration:none;">
+    <div class="grain"></div>
+    <div class="playbtn">▶</div>
+    <div class="vidlabel"><div class="k1">DISCOVER BIG NETWORK</div><div class="k2">See the chain, wallet &amp; explorer in action</div></div>
+  </a>
+  <div>
+    <div class="kicker">Where Chain Meets Community</div>
+    <h2>BIG NETWORK COMBINES REAL WEB3 UTILITY WITH BIGFOOT404's COMMUNITY.</h2>
+    <p class="discoverP">A live ledger, a working explorer, a custodial wallet service, and a validator node you can run yourself — all built and operated by Bigfoot404 LLC.</p>
+    <div class="chipgrid">
+      <div class="chip"><div class="cv">$BIG</div><div class="ck">Utility Token</div></div>
+      <div class="chip"><div class="cv">BIGscan</div><div class="ck">Live Explorer</div></div>
+      <div class="chip"><div class="cv">Open Source</div><div class="ck">On GitHub</div></div>
+      <div class="chip"><div class="cv">Run-A-Node</div><div class="ck">Join As Validator</div></div>
+    </div>
+    <a class="btn btn-primary" href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/node-setup">Learn More →</a>
+  </div>
+</section>
+
+<section id="explore">
+  <div class="kicker">Own A Piece Of The Network</div>
+  <h2>EXPLORE THE BIG ECOSYSTEM</h2>
+  <div class="cardgrid">
+    <a class="ecard" href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/scan">
+      <div class="top">◎</div>
+      <div class="body"><span class="badge2">Explorer</span><div class="t2">BIGscan</div><div class="d2">Explore live transactions, blocks, and wallets on the BIG ledger in real time.</div></div>
+    </a>
+    <a class="ecard" href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/wallet">
+      <div class="top">▣</div>
+      <div class="body"><span class="badge2">Wallet</span><div class="t2">BIG Wallet</div><div class="d2">A chain-backed custodial wallet service — send, receive, and hold $BIG.</div></div>
+    </a>
+    <a class="ecard" href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/node-setup">
+      <div class="top">⬡</div>
+      <div class="body"><span class="badge2">Node</span><div class="t2">Run-A-Node</div><div class="d2">Spin up your own validator and become part of the network's backbone.</div></div>
+    </a>
+  </div>
+</section>
+
+<section>
+  <div class="split">
+    <img class="splitimg" src="https://media.base44.com/images/public/69f56986c51e35a876adf38d/d38ede09c_generated_image.png" alt="Run a node with BIG Network">
+    <div>
+      <div class="kicker">A More Rewarded Network</div>
+      <h2>DECENTRALIZED. COMMUNITY OWNED. BUILT TO LAST.</h2>
+      <div class="checklist">
+        <div class="checkitem"><span class="cic">◆</span>Track Your Node</div>
+        <div class="checkitem"><span class="cic">★</span>Earn $BIG Rewards</div>
+        <div class="checkitem"><span class="cic">◈</span>Explore The Ledger</div>
+        <div class="checkitem"><span class="cic">◎</span>Unlock Ecosystem Perks</div>
+      </div>
+      <a class="btn btn-outline" href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/">Claim From The Faucet →</a>
+    </div>
+  </div>
+</section>
+
+<section id="community">
+  <div class="ctabox">
+    <h3>"GOOD CHAIN<br>GOES FURTHER."</h3>
+    <div class="joinbox">
+      <h3>Join The Movement</h3>
+      <p>Be the first to get network updates, node drops, and community rewards.</p>
+      <form class="joinform" onsubmit="return false;">
+        <input type="email" placeholder="Enter your email" required>
+        <button type="submit">→</button>
+      </form>
+      <div class="socials">
+        <a href="https://github.com/mcontwitter-glitch/BIG-Network" title="GitHub">GH</a>
+        <a href="https://bigfoot404.biz" title="Bigfoot404">B4</a>
+        <a href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/" title="Faucet">◈</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footwrap">
+    <div>
+      <div class="footlogo"><span class="mk" style="color:var(--cyan)">BIG</span> NETWORK</div>
+      <div class="foottag">Rest. Mine. Stake. Belong.</div>
+    </div>
+    <div class="footlinks">
+      <a href="#home">Home</a>
+      <a href="#discover">Chain</a>
+      <a href="#explore">Ecosystem</a>
+      <a href="https://8f2dvht9slxsi3-9090.proxy.runpod.net/">Faucet</a>
+      <a href="https://github.com/mcontwitter-glitch/BIG-Network">Docs</a>
+    </div>
+  </div>
+  <div class="footbottom">© 2026 Bigfoot404 LLC. All rights reserved. Built for a well-networked world.</div>
+</footer>
+
 </body>
 </html>
