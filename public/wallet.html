@@ -191,8 +191,26 @@
     .app{max-width:440px}
   }
 </style>
+
+<style id="sitenav-css">
+.sitenav{max-width:960px;margin:0 auto 18px;display:flex;gap:8px;flex-wrap:wrap;
+  padding:10px 4px;border-bottom:1px solid rgba(0,232,133,.18)}
+.sitenav a{font-family:'Inter',sans-serif;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:#8aa096;text-decoration:none;border:1px solid rgba(0,232,133,.22);background:rgba(0,232,133,.04);
+  padding:7px 14px;transition:.15s;border-radius:999px}
+.sitenav a:hover{color:#00e885;border-color:rgba(0,232,133,.55);box-shadow:0 0 10px rgba(0,232,133,.2)}
+.sitenav a.home{color:#00e885;border-color:rgba(0,232,133,.4)}
+</style>
 </head>
 <body>
+<div class="sitenav">
+  <a class="home" href="https://www.bigfoot404.biz">&larr; Bigfoot404.biz</a>
+  <a href="https://node.bigfoot404.biz">Node</a>
+  <a href="https://wallet.bigfoot404.biz">Wallet</a>
+  <a href="https://bigscan.bigfoot404.biz">BigScan</a>
+  <a href="https://crm.bigfoot404.biz">CRM</a>
+</div>
+
 <div class="grid-overlay"></div>
 
 <div class="app">
