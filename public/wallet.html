@@ -821,7 +821,8 @@ async function verifyNFT() {
     // exact match: assets of the official Bigfoot Core collection
     const matched = assets.filter(a => {
       const ua = a.updateAuthority;
-      return ua && ua.type !== 'None' && String(ua.fields && ua.fields[0]) === NFT_GATE.collection;
+      const addr = ua ? (ua.fields ? ua.fields[0] : ua.address) : null;
+      return String(addr) === NFT_GATE.collection;
     }).map(a => ({ mint: String(a.publicKey), name: a.name, uri: String(a.uri || '') }));
 
     if (matched.length) {
