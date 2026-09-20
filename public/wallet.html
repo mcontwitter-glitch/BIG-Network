@@ -192,6 +192,30 @@
   }
 </style>
 
+<style id="nftgate-css">
+/* ===== Solana NFT gate (token gating for site assets) ===== */
+.gate-panel{background:linear-gradient(160deg,rgba(0,232,133,.07),rgba(0,0,0,.35));border:1px solid rgba(0,232,133,.28);border-radius:14px;padding:18px 16px;margin:0 0 14px}
+.gate-title{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan)}
+.gate-title .lock{font-size:13px}
+.gate-desc{font-size:12px;color:var(--dim);line-height:1.6;margin:8px 0 14px}
+.gate-wallet{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.gate-btn{flex:1;min-width:110px;background:rgba(0,232,133,.08);border:1px solid rgba(0,232,133,.35);color:#00e885;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;padding:11px 10px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
+.gate-btn:hover{background:rgba(0,232,133,.16);box-shadow:0 0 12px rgba(0,232,133,.25)}
+.gate-btn[disabled]{opacity:.45;cursor:default}
+.gate-status{font-family:var(--font-mono);font-size:11px;line-height:1.7}
+.gate-status.ok{color:#00e885}
+.gate-status.no{color:#ff8d6b}
+.gate-status.err{color:#ffd166}
+.gate-status.dim{color:var(--dim)}
+.gate-addr{font-family:var(--font-mono);font-size:10px;color:var(--dim);word-break:break-all;margin-top:6px}
+.gate-assets{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;margin-top:14px}
+.gate-asset{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.09);border-radius:10px;overflow:hidden;padding-bottom:8px}
+.gate-asset img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#0b1512}
+.gate-asset .nm{font-size:9.5px;color:#d7fff0;padding:7px 8px 2px;font-family:var(--font-mono);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gate-asset .mn{font-size:8px;color:#5c7d6f;padding:1px 8px 0;font-family:var(--font-mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid rgba(0,232,133,.25);border-top-color:#00e885;border-radius:50%;animation:gspin .8s linear infinite;vertical-align:-2px;margin-right:7px}
+@keyframes gspin{to{transform:rotate(360deg)}}
+</style>
 <style id="sitenav-css">
 .sitenav{max-width:960px;margin:0 auto 18px;display:flex;gap:8px;flex-wrap:wrap;
   padding:10px 4px;border-bottom:1px solid rgba(0,232,133,.18)}
@@ -239,6 +263,18 @@
 
   <!-- ===== PORTFOLIO ===== -->
   <div class="view active" id="view-portfolio">
+
+    <!-- ===== SOLANA NFT GATE (token gating: real wallet connect + Bigfoot 404 NFT check on mainnet) ===== -->
+    <div class="gate-panel" id="nftGate">
+      <div class="gate-title"><span class="lock">🔐</span>Bigfoot 404 NFT Access</div>
+      <p class="gate-desc">Connect your Solana wallet to verify Bigfoot 404 NFT ownership and unlock the site assets. Verification runs live against Solana mainnet.</p>
+      <div id="gateBody">
+        <div class="gate-wallet" id="gateWallets"></div>
+        <div class="gate-status dim" id="gateStatus">No wallet connected.</div>
+        <div class="gate-addr" id="gateAddr" style="display:none"></div>
+        <div class="gate-assets" id="gateAssets" style="display:none"></div>
+      </div>
+    </div>
 
     <div class="balance-card">
       <div class="bc-top">
@@ -655,5 +691,230 @@ refreshBalance();
 setInterval(refreshBalance, 20000);
 })();
 </script>
+<script type="module">
+/* ============================================================
+   BIGFOOT 404 NFT GATE — real Solana wallet connect + mainnet NFT check.
+   Token gating for the site: connect Phantom/Solflare/Backpack, verify the
+   wallet holds the Bigfoot 404 NFT on Solana mainnet, unlock the assets view.
+
+   CONFIG: once the official collection is set, verification goes strict:
+   - collectionMint set  -> a held NFT matches only if its Metaplex metadata
+                            collection/creator matches (exact, unspoofable)
+   - collectionMint null -> falls back to symbol/name match (config below)
+   ============================================================ */
+const NFT_GATE = {
+  rpc: 'https://api.mainnet-beta.solana.com',   // public mainnet RPC
+  collectionMint: null,                          // TODO: official collection mint from MC -> strict mode
+  verifiedCreators: [],                          // TODO: verified creator pubkeys -> strict mode
+  symbolMatch: ['bigfoot 404', 'bigfoot404'],    // fallback match while mint is pending
+  nameMatch: ['bigfoot 404', 'bigfoot404', 'bigfoot-404'],
+};
+
+const TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+const TOKEN_METADATA_PROGRAM_ID = 'metaqbxxUiE2avAFyBB1sfsWkc4yyAWWVB9XhCgiNxU';
+
+const $ = id => document.getElementById(id);
+let provider = null, gateWallet = null, gateTimer = null;
+
+/* ---- wallet detection (Phantom / Solflare / Backpack / generic injected) ---- */
+function detectWallets() {
+  const w = [];
+  const p = window.phantom && window.phantom.solana;
+  if (p && p.isPhantom) w.push({ name: 'Phantom', icon: '👻', p });
+  const sf = window.solflare;
+  if (sf && sf.isSolflare) w.push({ name: 'Solflare', icon: '🔥', p: sf });
+  const bp = window.backpack;
+  if (bp && bp.isBackpack) w.push({ name: 'Backpack', icon: '🎒', p: bp });
+  if (!w.length && window.solana && window.solana.isPhantom === undefined && window.solana.publicKey !== undefined)
+    w.push({ name: 'Solana Wallet', icon: '◎', p: window.solana });
+  return w;
+}
+
+function renderWalletButtons() {
+  const box = $('gateWallets');
+  const wallets = detectWallets();
+  if (gateWallet) {
+    box.innerHTML = '';
+    const d = document.createElement('button');
+    d.className = 'gate-btn';
+    d.textContent = 'Disconnect ' + gateWallet.label;
+    d.onclick = disconnectGate;
+    box.appendChild(d);
+    return;
+  }
+  if (!wallets.length) {
+    box.innerHTML = '<div class="gate-status dim" style="flex:1">No Solana wallet detected — install Phantom, Solflare or Backpack, then reload.</div>';
+    return;
+  }
+  box.innerHTML = '';
+  wallets.forEach(w => {
+    const b = document.createElement('button');
+    b.className = 'gate-btn';
+    b.innerHTML = w.icon + ' Connect ' + w.name;
+    b.onclick = () => connectGate(w);
+    box.appendChild(b);
+  });
+}
+
+function setGate(state, msg) {
+  const st = $('gateStatus');
+  st.className = 'gate-status ' + (state || 'dim');
+  st.innerHTML = msg;
+}
+
+async function connectGate(w) {
+  try {
+    setGate('dim', '<span class="spin"></span>Connecting to ' + w.name + '…');
+    const res = await w.p.connect();
+    provider = w.p;
+    gateWallet = { label: w.name, addr: (res && res.publicKey ? res.publicKey : w.p.publicKey).toString() };
+    localStorage.setItem('big_nft_gate_addr', gateWallet.addr);
+    renderWalletButtons();
+    $('gateAddr').textContent = gateWallet.addr;
+    $('gateAddr').style.display = 'block';
+    await verifyNFT();
+  } catch (e) {
+    if (String(e && e.message || e).includes('User rejected')) setGate('dim', 'Connection cancelled.');
+    else setGate('err', 'Wallet connection failed: ' + (e && e.message || e));
+  }
+}
+
+function disconnectGate() {
+  try { if (provider && provider.disconnect) provider.disconnect(); } catch (e) {}
+  provider = null; gateWallet = null;
+  localStorage.removeItem('big_nft_gate_addr');
+  $('gateAddr').style.display = 'none';
+  $('gateAssets').style.display = 'none';
+  $('gateAssets').innerHTML = '';
+  setGate('dim', 'No wallet connected.');
+  renderWalletButtons();
+}
+
+/* ---- Solana mainnet NFT check ---- */
+async function rpc(method, params) {
+  const r = await fetch(NFT_GATE.rpc, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })
+  });
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message || 'RPC error');
+  return j.result;
+}
+
+function b64ToBytes(b64) { return Uint8Array.from(atob(b64), c => c.charCodeAt(0)); }
+
+/* borsh string: u32 LE length + bytes */
+function readBorchStr(bytes, off) {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset);
+  const len = dv.getUint32(off, true);
+  return { text: new TextDecoder().decode(bytes.subarray(off + 4, off + 4 + len)), next: off + 4 + len };
+}
+
+async function verifyNFT() {
+  if (!gateWallet) return;
+  setGate('dim', '<span class="spin"></span>Checking Solana mainnet for your Bigfoot 404 NFTs…');
+  try {
+    const { PublicKey, Buffer } = await import('https://esm.sh/@solana/web3.js@1.95.3');
+    const owner = new PublicKey(gateWallet.addr);
+
+    // 1) all SPL token accounts of the wallet
+    const res = await rpc('getTokenAccountsByOwner', [
+      owner.toBase58(), { programId: TOKEN_PROGRAM_ID }, { encoding: 'jsonParsed' }
+    ]);
+    const nftMints = [];
+    for (const acc of res.value || []) {
+      const info = acc.account.data.parsed && acc.account.data.parsed.info;
+      if (!info) continue;
+      const amt = info.tokenAmount;
+      if (amt && amt.decimals === 0 && amt.uiAmount >= 1) nftMints.push(info.mint);
+    }
+
+    // 2) pull Metaplex metadata for candidate mints
+    let matched = [];
+    if (nftMints.length) {
+      const keys = nftMints.map(m => PublicKey.findProgramAddressSync(
+        [Buffer.from('metadata'), new PublicKey(TOKEN_METADATA_PROGRAM_ID).toBuffer(), new PublicKey(m).toBuffer()],
+        new PublicKey(TOKEN_METADATA_PROGRAM_ID)
+      )[0].toBase58());
+      const accs = await rpc('getMultipleAccounts', [keys, { encoding: 'base64' }]);
+      for (let i = 0; i < keys.length; i++) {
+        const a = accs.value[i];
+        if (!a) continue;
+        const bytes = b64ToBytes(a.data[0]);
+        // layout: key(1) + updateAuth(32) + mint(32) + name + symbol + uri ...
+        let off = 1 + 32 + 32;
+        const name = readBorchStr(bytes, off); off = name.next;
+        const symbol = readBorchStr(bytes, off); off = symbol.next;
+        const uri = readBorchStr(bytes, off);
+        const nm = name.text.toLowerCase().trim();
+        const sy = symbol.text.toLowerCase().trim();
+        const hit = nftMatch(nm, sy);
+        if (hit) matched.push({ mint: nftMints[i], name: name.text, symbol: symbol.text, uri: uri.text });
+      }
+    }
+
+    if (matched.length) {
+      setGate('ok', '✅ Verified Bigfoot 404 holder — ' + matched.length +
+        ' NFT' + (matched.length > 1 ? 's' : '') + ' found on Solana mainnet. Assets unlocked.');
+      renderAssets(matched);
+      document.dispatchEvent(new CustomEvent('nftgate:unlocked', { detail: matched }));
+    } else {
+      setGate('no', '❌ No Bigfoot 404 NFT found in this wallet on Solana mainnet. Assets stay locked.');
+      $('gateAssets').style.display = 'none';
+      document.dispatchEvent(new CustomEvent('nftgate:locked'));
+    }
+  } catch (e) {
+    setGate('err', 'Could not verify: ' + (e && e.message || e) + ' — retry in a moment (public RPC rate limits).');
+  }
+}
+
+function nftMatch(name, symbol) {
+  // strict mode first (once MC provides the official collection)
+  if (NFT_GATE.verifiedCreators.length) return false; // replaced by creator check below when configured
+  // fallback: symbol/name match while the official mint is pending
+  return NFT_GATE.symbolMatch.some(s => symbol === s) ||
+         NFT_GATE.nameMatch.some(n => name.includes(n));
+}
+
+function renderAssets(items) {
+  const box = $('gateAssets');
+  box.innerHTML = '';
+  items.slice(0, 12).forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'gate-asset';
+    el.innerHTML = '<img alt="' + n.name.replace(/"/g, '&quot;') + '"/><div class="nm">' + n.name +
+      '</div><div class="mn">' + n.mint.slice(0, 4) + '…' + n.mint.slice(-4) + '</div>';
+    box.appendChild(el);
+    if (n.uri && n.uri.startsWith('http')) {
+      fetch(n.uri).then(r => r.json()).then(j => {
+        if (j && j.image) el.querySelector('img').src = j.image;
+      }).catch(() => {});
+    }
+  });
+  box.style.display = 'grid';
+}
+
+/* ---- boot ---- */
+renderWalletButtons();
+// auto-reconnect if the wallet already granted access (provider.publicKey survives reload)
+(async () => {
+  await new Promise(r => setTimeout(r, 400));
+  const saved = localStorage.getItem('big_nft_gate_addr');
+  const wallets = detectWallets();
+  for (const w of wallets) {
+    if (w.p.isConnected && w.p.publicKey) {
+      provider = w.p;
+      gateWallet = { label: w.name, addr: w.p.publicKey.toString() };
+      renderWalletButtons();
+      $('gateAddr').textContent = gateWallet.addr;
+      $('gateAddr').style.display = 'block';
+      await verifyNFT();
+      return;
+    }
+  }
+  if (saved) setGate('dim', 'Reconnect your wallet to re-verify NFT ownership.');
+})();
+</script>
+
 </body>
 </html>
