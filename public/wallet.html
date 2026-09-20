@@ -703,15 +703,11 @@ setInterval(refreshBalance, 20000);
    - collectionMint null -> falls back to symbol/name match (config below)
    ============================================================ */
 const NFT_GATE = {
-  rpc: 'https://api.mainnet-beta.solana.com',   // public mainnet RPC
-  collectionMint: null,                          // TODO: official collection mint from MC -> strict mode
-  verifiedCreators: [],                          // TODO: verified creator pubkeys -> strict mode
-  symbolMatch: ['bigfoot 404', 'bigfoot404'],    // fallback match while mint is pending
-  nameMatch: ['bigfoot 404', 'bigfoot404', 'bigfoot-404'],
+  rpc: 'https://api.mainnet-beta.solana.com',
+  /* Official Bigfoot collection — Metaplex Core "Bigfoot" (1,500 minted, verified on-chain).
+     Core assets carry the collection address as their update authority, so matching it is exact. */
+  collection: 'CEYQLZWtF9sqMATXJGkM8UqP5JQjEcCaBBmmXtJkL3pF',
 };
-
-const TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
-const TOKEN_METADATA_PROGRAM_ID = 'metaqbxxUiE2avAFyBB1sfsWkc4yyAWWVB9XhCgiNxU';
 
 const $ = id => document.getElementById(id);
 let provider = null, gateWallet = null, gateTimer = null;
@@ -812,68 +808,35 @@ function readBorchStr(bytes, off) {
 
 async function verifyNFT() {
   if (!gateWallet) return;
-  setGate('dim', '<span class="spin"></span>Checking Solana mainnet for your Bigfoot 404 NFTs…');
+  setGate('dim', '<span class="spin"></span>Checking Solana mainnet for your Bigfoot NFTs…');
   try {
-    const { PublicKey, Buffer } = await import('https://esm.sh/@solana/web3.js@1.95.3');
-    const owner = new PublicKey(gateWallet.addr);
+    const { createUmi } = await import('https://esm.sh/@metaplex-foundation/umi-bundle-defaults@1.6.0');
+    const { publicKey } = await import('https://esm.sh/@metaplex-foundation/umi@1.6.0');
+    const { fetchAssetsByOwner } = await import('https://esm.sh/@metaplex-foundation/mpl-core@1.10.0');
+    const umi = createUmi(NFT_GATE.rpc);
 
-    // 1) all SPL token accounts of the wallet
-    const res = await rpc('getTokenAccountsByOwner', [
-      owner.toBase58(), { programId: TOKEN_PROGRAM_ID }, { encoding: 'jsonParsed' }
-    ]);
-    const nftMints = [];
-    for (const acc of res.value || []) {
-      const info = acc.account.data.parsed && acc.account.data.parsed.info;
-      if (!info) continue;
-      const amt = info.tokenAmount;
-      if (amt && amt.decimals === 0 && amt.uiAmount >= 1) nftMints.push(info.mint);
-    }
+    // every Metaplex Core asset the wallet owns
+    const assets = await fetchAssetsByOwner(umi, publicKey(gateWallet.addr), { skipDerivePlugins: true });
 
-    // 2) pull Metaplex metadata for candidate mints
-    let matched = [];
-    if (nftMints.length) {
-      const keys = nftMints.map(m => PublicKey.findProgramAddressSync(
-        [Buffer.from('metadata'), new PublicKey(TOKEN_METADATA_PROGRAM_ID).toBuffer(), new PublicKey(m).toBuffer()],
-        new PublicKey(TOKEN_METADATA_PROGRAM_ID)
-      )[0].toBase58());
-      const accs = await rpc('getMultipleAccounts', [keys, { encoding: 'base64' }]);
-      for (let i = 0; i < keys.length; i++) {
-        const a = accs.value[i];
-        if (!a) continue;
-        const bytes = b64ToBytes(a.data[0]);
-        // layout: key(1) + updateAuth(32) + mint(32) + name + symbol + uri ...
-        let off = 1 + 32 + 32;
-        const name = readBorchStr(bytes, off); off = name.next;
-        const symbol = readBorchStr(bytes, off); off = symbol.next;
-        const uri = readBorchStr(bytes, off);
-        const nm = name.text.toLowerCase().trim();
-        const sy = symbol.text.toLowerCase().trim();
-        const hit = nftMatch(nm, sy);
-        if (hit) matched.push({ mint: nftMints[i], name: name.text, symbol: symbol.text, uri: uri.text });
-      }
-    }
+    // exact match: assets of the official Bigfoot Core collection
+    const matched = assets.filter(a => {
+      const ua = a.updateAuthority;
+      return ua && ua.type !== 'None' && String(ua.fields && ua.fields[0]) === NFT_GATE.collection;
+    }).map(a => ({ mint: String(a.publicKey), name: a.name, uri: String(a.uri || '') }));
 
     if (matched.length) {
-      setGate('ok', '✅ Verified Bigfoot 404 holder — ' + matched.length +
+      setGate('ok', '✅ Verified Bigfoot holder — ' + matched.length +
         ' NFT' + (matched.length > 1 ? 's' : '') + ' found on Solana mainnet. Assets unlocked.');
       renderAssets(matched);
       document.dispatchEvent(new CustomEvent('nftgate:unlocked', { detail: matched }));
     } else {
-      setGate('no', '❌ No Bigfoot 404 NFT found in this wallet on Solana mainnet. Assets stay locked.');
+      setGate('no', '❌ No Bigfoot NFT found in this wallet on Solana mainnet. Assets stay locked.');
       $('gateAssets').style.display = 'none';
       document.dispatchEvent(new CustomEvent('nftgate:locked'));
     }
   } catch (e) {
     setGate('err', 'Could not verify: ' + (e && e.message || e) + ' — retry in a moment (public RPC rate limits).');
   }
-}
-
-function nftMatch(name, symbol) {
-  // strict mode first (once MC provides the official collection)
-  if (NFT_GATE.verifiedCreators.length) return false; // replaced by creator check below when configured
-  // fallback: symbol/name match while the official mint is pending
-  return NFT_GATE.symbolMatch.some(s => symbol === s) ||
-         NFT_GATE.nameMatch.some(n => name.includes(n));
 }
 
 function renderAssets(items) {
